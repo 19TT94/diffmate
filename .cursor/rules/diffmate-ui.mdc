@@ -1,0 +1,122 @@
+---
+description: diffmate UI conventions — React client structure, imports, styled-components, and theme usage
+globs: src/ui/src/**/*.{ts,tsx}
+alwaysApply: true
+---
+
+# diffmate UI Rules
+
+## Scope
+
+- `src/ui/` is a separate Vite + React + TypeScript + styled-components
+  package with its own `package.json`, `tsconfig.json`, and dependency
+  policy — the root package's "one runtime dependency needs a real reason"
+  rule (`.cursor/rules/diffmate.mdc`) does not apply here.
+- No router, no server-state cache library (TanStack Query, etc.): this is
+  a single-screen local review tool talking to one `ReviewSession`, not a
+  multi-route CRUD app — don't add either without a concrete need.
+- Shared UI primitives: `src/components/ui/`
+- Feature components: `src/components/`
+- Data/state: `src/hooks/` (session fetch + SSE sync, keyboard shortcuts),
+  `src/lib/` (REST client, diff/side-by-side math, file-status summaries)
+- Theme: `src/styles/theme.ts`
+- `src/types.ts` intentionally duplicates the JSON shape of
+  `engine/types.ts` rather than importing it — the UI only ever sees this
+  data as JSON over HTTP/SSE, and the two packages have different
+  tsconfigs (bundler vs. Node ESM).
+- Keep diffs focused; match existing patterns in neighboring files.
+
+## Import groups
+
+Separate local imports with a blank line and a comment label. External
+packages have no label. Order:
+
+1. External packages (no comment) — `react`, `styled-components`, `vitest`, etc.
+2. `// Hooks`
+3. `// Components`
+4. `// Utils` — `lib/` helpers and `test/` helpers (`renderWithTheme`)
+5. `// Types` — `import type` from `types.ts` or a component/hook
+
+Use only the groups a file needs. Mixed value+type imports stay with the
+value's group. Do not mix unlabeled local imports into a group.
+
+```tsx
+import { useState } from 'react'
+import styled from 'styled-components'
+
+// Hooks
+import { useReviewSession } from '../hooks/useReviewSession'
+
+// Components
+import { Button } from './ui/Button'
+
+// Utils
+import { buildSideBySideRows } from '../lib/diff'
+
+// Types
+import type { Hunk } from '../types'
+```
+
+## Components
+
+Follow `src/App.tsx`:
+
+1. **Arrow function** for the root component (`const App = () => { ... }`);
+   feature/UI components may use `function Name(props) { ... }` — match the
+   neighboring file.
+2. **Module constants** above the component (regex, static maps, etc.).
+3. **Component body first**, then any component-local styled-components
+   **below** it under a `// Style Overrides` comment.
+4. Root component (`App.tsx`) uses a default export; everything else is a
+   named export.
+
+```tsx
+function MyThing({ value }: { value: string }) {
+  return <Box>{value}</Box>
+}
+
+// Style Overrides
+const Box = styled.div`
+  display: flex;
+`
+```
+
+Shared UI in `components/ui/` may colocate styled definitions with exports.
+
+## Styled-components & theme
+
+- Read colors from `theme.colors` — semantic tokens: `background`,
+  `primary`, `secondary`, `tertiary`, `muted`, `border`, `success`,
+  `danger`, `accent`, plus diffmate-specific `diffAddBg`/`diffDelBg` for
+  hunk line backgrounds.
+- Don't add hover/disabled color variants to `theme.ts`. Handle states in
+  component CSS: hover via `filter: brightness(0.92)`, disabled via
+  `opacity: 0.5` + `cursor: not-allowed`, tinted backgrounds via
+  `color-mix(in srgb, ${theme.colors.x} N%, ${theme.colors.tertiary})`.
+- Use transient props with a `$` prefix for styled-only props (`$variant`,
+  `$status`, `$focused`) so they never leak onto the DOM element.
+- Always use styled-components for styling — never the inline `style`
+  prop, except for a genuinely dynamic value computed at runtime that
+  can't be expressed in CSS.
+
+## Data flow
+
+- `useReviewSession` owns the session fetch, SSE subscription, and
+  mutation calls (`setHunkStatus`, `setHunkComment`, `submitReview`); it
+  always re-fetches the whole session after a write or an SSE event rather
+  than patching local state — simpler to reason about at this scale, and
+  avoids drift between the UI and the server's `ReviewSession`.
+- `useKeyboardShortcuts` is presentation-agnostic: it takes ids and
+  callbacks, never touches the DOM directly. Scrolling to the focused
+  hunk/file and focusing the comment box are done via `id` attributes
+  (`hunk-<id>`, `file-section-<index>`, `comment-<id>`) and
+  `document.getElementById` in `App.tsx`, not a ref registry — this is a
+  small, flat component tree where that's simpler than plumbing refs
+  through props.
+
+## General
+
+- Co-locate tests in `__test__/` next to the module under test
+  (`vitest` + `@testing-library/react`; theme-aware render helper in
+  `src/test/render.tsx`).
+- Only commit when explicitly asked.

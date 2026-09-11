@@ -1,0 +1,71 @@
+---
+description: diffmate project conventions — engine/CLI/MCP structure, imports, dependency policy
+globs: src/**/*.ts
+alwaysApply: true
+---
+
+# diffmate Project Rules
+
+## Scope
+
+- Harness-agnostic core lives in `src/engine/` (git access, diff parsing,
+  session state, HTTP server, output builder).
+- `src/cli/` — phase 1 one-shot entry point, works from any harness.
+- `src/mcp/` — phase 2 entry point, Claude Code only.
+- `src/install/` — `diffmate install` (writes `.mcp.json` + slash command).
+- `src/ui/` — vanilla HTML/CSS/JS, no framework, no build step.
+- Keep diffs focused; match existing patterns in neighboring files. Full
+  architecture: `docs/PLAN.md`.
+
+## Import groups
+
+Separate local imports with a blank line and a comment label. External
+packages have no label. Order:
+
+1. External packages (no comment) — e.g. `@modelcontextprotocol/sdk`
+2. `// Engine` — anything from `engine/`
+3. `// CLI` / `// MCP` — whichever entry point the file belongs to
+4. `// Types` — `import type` from `engine/types`
+
+```ts
+import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+
+// Engine
+import { ReviewSession } from '../engine/session.js'
+import { parseDiff } from '../engine/parseDiff.js'
+
+// Types
+import type { Hunk } from '../engine/types.js'
+```
+
+Use only the groups a file needs.
+
+## Dependency policy
+
+- One runtime dependency exists for a real reason:
+  `@modelcontextprotocol/sdk`, because hand-rolling MCP's JSON-RPC framing
+  isn't worth it. Any new runtime dependency needs the same bar.
+- Shell out to `git` via `execFile` (never `exec`) instead of adding a git
+  library — git is already a hard requirement for diffmate to exist.
+- Prefer Node builtins (`node:http`, `node:events`, `node:crypto`,
+  `node:child_process`) over small utility packages.
+
+## Session/engine invariants
+
+- The `ReviewSession` event bus (`engine/session.ts`) stays a generic
+  `EventEmitter`-based pub/sub, not a single resolve-once promise — phase
+  2's MCP `wait_for_activity` subscribes to the same bus phase 1's CLI uses
+  for `review_complete`. Never rework `session.ts` to special-case one mode.
+- diffmate never mutates git state or files on its own. "Approve" and
+  "reject" are signals only, consumed by whichever agent reads the
+  structured output — make this explicit in any UI copy or tool
+  description you touch.
+- Bind the local HTTP server to `127.0.0.1` only, with a random session
+  token embedded in the served URL.
+
+## General
+
+- TypeScript strict mode, ESM, target Node 18+ (`tsconfig.json`).
+- Formatting via Prettier (`.prettierrc`) — no semicolons, single quotes,
+  trailing commas, 80-column width.
+- Only commit when explicitly asked.
