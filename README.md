@@ -27,7 +27,57 @@ hunk, or a live question-and-answer loop with the agent that actually wrote
 the code. diffmate is a from-scratch rewrite that adds both, while keeping
 the core review flow usable from any harness.
 
+## Setup
+
+Requires Node 18+.
+
+```bash
+npm install          # root deps (engine/CLI/MCP)
+npm --prefix src/ui install   # UI deps (React/Vite/styled-components) — separate package, see below
+```
+
+## Development
+
+```bash
+npm run typecheck   # tsc --noEmit — engine/cli/mcp/install (src/ui has its own, see below)
+npm test             # node:test on src/engine, then vitest on src/ui
+npm run format        # prettier --check .
+```
+
+`src/ui/` is a separate Vite package with its own scripts, reachable from
+the root via:
+
+```bash
+npm run dev:ui        # vite dev server with HMR (UI only, no live data)
+npm run build:ui       # production build -> src/ui/dist
+npm run lint:ui         # eslint
+npm run test:ui          # vitest run
+```
+
+## Try it (demo)
+
+The CLI entry point (`diffmate review`, milestone M7) and the structured
+output builder (M6) aren't built yet, so there's no `diffmate` command to
+run. What _is_ built — git diff resolution, parsing, the `ReviewSession`
+state model, and the REST/SSE server — is enough to try the review UI
+against a real repo with a small demo script:
+
+```bash
+npm run build:ui                 # only needed once, or after UI changes
+npm run demo                      # reviews the working-tree diff of the current directory
+npm run demo -- /path/to/a/repo    # or point it at any other git repo
+```
+
+This opens a browser tab against that repo's uncommitted changes (staged +
+unstaged + untracked), lets you approve/reject/comment on hunks with the
+full keyboard shortcuts, and on **Submit review** prints the final
+per-hunk decisions to the terminal and shuts the server down. It's a stand-in
+for the real CLI, not the CLI itself — no structured markdown/JSON output
+yet (that's M6), and diffmate itself isn't a git repo yet, so `npm run demo`
+with no argument won't work inside this project until one exists.
+
 ## Usage
 
-Not yet implemented — usage instructions will be added once phase 1
+Not yet implemented as a real CLI — see **Try it (demo)** above in the
+meantime. Full usage instructions will be added once phase 1
 (`docs/PLAN.md`, milestone M7) ships.
