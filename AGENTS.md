@@ -78,7 +78,15 @@ Per `docs/PLAN.md`:
 
 ## Skills
 
-| Skill | Purpose |
-| --- | --- |
-| [`code-review`](.cursor/skills/code-review/SKILL.md) | Review changes against diffmate conventions |
-| [`pr-prepare`](.cursor/skills/pr-prepare/SKILL.md) | Pre-commit checklist (typecheck, tests, format) |
+Each skill exists once per tool since the two harnesses load skills from
+different locations and frontmatter dialects; keep a pair in sync if either
+changes.
+
+| Purpose | Cursor | Claude Code |
+| --- | --- | --- |
+| Review changes against diffmate conventions | [`code-review`](.cursor/skills/code-review/SKILL.md) | [`diffmate-code-review`](.claude/skills/diffmate-code-review/SKILL.md) |
+| Pre-commit checklist (typecheck, tests, format) | [`pr-prepare`](.cursor/skills/pr-prepare/SKILL.md) | [`pr-prepare`](.claude/skills/pr-prepare/SKILL.md) |
+
+The Claude Code review skill is named `diffmate-code-review`, not
+`code-review`, to avoid colliding with Claude Code's own built-in
+`/code-review` command.
