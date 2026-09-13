@@ -10,7 +10,8 @@
     "src/ui"
   ],
   "bin": {
-    "diffmate": "bin/diffmate.js"
+    "diffmate": "bin/diffmate.js",
+    "diffmate-demo": "bin/diffmate-demo.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
