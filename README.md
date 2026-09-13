@@ -32,9 +32,13 @@ the core review flow usable from any harness.
 Requires Node 18+.
 
 ```bash
-npm install          # root deps (engine/CLI/MCP)
-npm --prefix src/ui install   # UI deps (React/Vite/styled-components) — separate package, see below
+npm install
 ```
+
+`src/ui/` (the React review UI) is a separate package — its own
+`package.json`/`tsconfig` with a different TypeScript config (bundler
+resolution, JSX) and dependency policy than the engine — wired in as an
+npm workspace, so this one `npm install` at the root covers both.
 
 ## Development
 
@@ -44,8 +48,7 @@ npm test             # node:test on src/engine, then vitest on src/ui
 npm run format        # prettier --check .
 ```
 
-`src/ui/` is a separate Vite package with its own scripts, reachable from
-the root via:
+`src/ui/`'s own scripts are reachable from the root via:
 
 ```bash
 npm run dev:ui        # vite dev server with HMR (UI only, no live data)
@@ -56,11 +59,11 @@ npm run test:ui          # vitest run
 
 ## Try it (demo)
 
-The CLI entry point (`diffmate review`, milestone M7) and the structured
-output builder (M6) aren't built yet, so there's no `diffmate` command to
-run. What _is_ built — git diff resolution, parsing, the `ReviewSession`
-state model, and the REST/SSE server — is enough to try the review UI
-against a real repo with a small demo script:
+The CLI entry point (`diffmate review`, milestone M7) isn't built yet, so
+there's no `diffmate` command to run. What _is_ built — git diff
+resolution, parsing, the `ReviewSession` state model, the REST/SSE server,
+and the structured markdown/JSON output builder — is enough to try the
+review UI against a real repo with a small demo script:
 
 ```bash
 npm run build:ui                 # only needed once, or after UI changes
@@ -70,11 +73,24 @@ npm run demo -- /path/to/a/repo    # or point it at any other git repo
 
 This opens a browser tab against that repo's uncommitted changes (staged +
 unstaged + untracked), lets you approve/reject/comment on hunks with the
-full keyboard shortcuts, and on **Submit review** prints the final
-per-hunk decisions to the terminal and shuts the server down. It's a stand-in
-for the real CLI, not the CLI itself — no structured markdown/JSON output
-yet (that's M6), and diffmate itself isn't a git repo yet, so `npm run demo`
-with no argument won't work inside this project until one exists.
+full keyboard shortcuts, and on **Submit review** prints the structured
+markdown output to the terminal and shuts the server down. It's a stand-in
+for the real CLI, not the CLI itself, and diffmate itself isn't a git repo
+yet, so `npm run demo` with no argument won't work inside this project
+until one exists.
+
+To trigger the demo from inside another project's directory (no path
+argument needed) rather than passing that project's path from here, link
+the `diffmate-demo` command once:
+
+```bash
+npm link              # from this checkout, after npm run build:ui
+cd /path/to/a/repo
+diffmate-demo          # reviews that repo's own working-tree diff
+```
+
+This is a stopgap for milestone M7, not a preview of the final CLI
+surface — see [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Usage
 

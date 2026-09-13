@@ -58,8 +58,9 @@ Per `docs/PLAN.md`:
   git library — git is already a hard requirement for diffmate to exist.
   Prefer Node builtins (`node:http`, `node:events`, `node:crypto`,
   `node:child_process`) over utility packages. `src/ui/` is a separate Vite
-  package with its own `package.json` and a normal React app's dependency
-  footprint (React, styled-components) — see `.cursor/rules/diffmate-ui.mdc`.
+  package (own `package.json`, wired in as an npm workspace so one root
+  `npm install` covers both) with a normal React app's dependency footprint
+  (React, styled-components) — see `.cursor/rules/diffmate-ui.mdc`.
 - **Import groups** — external packages first (no label), then local
   modules grouped with a blank line + comment label (`// Engine`, `// CLI`,
   `// MCP`, `// Types`). See `.cursor/rules/diffmate.mdc` for the full

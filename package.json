@@ -6,8 +6,12 @@
   "engines": {
     "node": ">=18"
   },
+  "workspaces": [
+    "src/ui"
+  ],
   "bin": {
-    "diffmate": "bin/diffmate.js"
+    "diffmate": "bin/diffmate.js",
+    "diffmate-demo": "bin/diffmate-demo.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,6 +27,6 @@
     "@types/node": "^22.20.2",
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "~6.0.2"
   }
 }
