@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 // Engine
 import { readUntrackedFile, resolveDiff } from '../src/engine/git.js'
+import { buildMarkdown } from '../src/engine/output.js'
 import { parseDiff, parseUntrackedFile } from '../src/engine/parseDiff.js'
 import { ReviewSession } from '../src/engine/session.js'
 import { startReviewServer } from '../src/engine/httpServer.js'
@@ -51,12 +52,7 @@ execFile(opener, [server.url], () => {
 })
 
 session.bus.once('review_complete', () => {
-  console.log('\nReview submitted. Final hunk decisions:')
-  for (const file of session.files) {
-    for (const hunk of file.hunks) {
-      const suffix = hunk.comment ? ` ("${hunk.comment}")` : ''
-      console.log(`  ${file.path} ${hunk.header} -> ${hunk.status}${suffix}`)
-    }
-  }
+  console.log('\nReview submitted. Structured output:')
+  console.log(buildMarkdown(session))
   server.close().then(() => process.exit(0))
 })

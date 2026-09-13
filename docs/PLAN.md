@@ -56,10 +56,19 @@ diffmate/
 ```
 
 `src/ui/` is a separate Vite package (own `package.json`, own
-`tsconfig.json`) built with `npm run build:ui`, producing `src/ui/dist` —
-the directory `httpServer.ts`'s `uiDir` points at. It is intentionally not
-under the root `tsconfig.json` program (excluded there) since it uses
-bundler module resolution and JSX, unlike the Node-ESM engine/CLI/MCP code.
+`tsconfig.json`), wired in as an **npm workspace** so a single root
+`npm install` covers both — the split package.json/tsconfig stays (it uses
+bundler module resolution and JSX, unlike the Node-ESM engine/CLI/MCP code,
+so it's intentionally excluded from the root `tsconfig.json` program), but
+there's only one install step and one lockfile. Build with
+`npm run build:ui`, producing `src/ui/dist` — the directory
+`httpServer.ts`'s `uiDir` points at. Keep the two workspaces' `typescript`
+devDependency versions aligned: a version mismatch lets npm hoist a shared
+transitive dep (e.g. `ts-api-utils`, pulled in by `src/ui`'s
+`typescript-eslint`) to the root `node_modules`, where it resolves against
+whichever `typescript` sits nearest — silently pairing it with the wrong
+major version and breaking `lint:ui` in a way that has nothing to do with
+the actual lint rules.
 Conventions: `.cursor/rules/diffmate-ui.mdc`.
 
 One `bin` (`diffmate`) with subcommands (`review` default, `mcp`, `install`)

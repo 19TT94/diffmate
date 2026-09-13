@@ -32,9 +32,13 @@ the core review flow usable from any harness.
 Requires Node 18+.
 
 ```bash
-npm install          # root deps (engine/CLI/MCP)
-npm --prefix src/ui install   # UI deps (React/Vite/styled-components) — separate package, see below
+npm install
 ```
+
+`src/ui/` (the React review UI) is a separate package — its own
+`package.json`/`tsconfig` with a different TypeScript config (bundler
+resolution, JSX) and dependency policy than the engine — wired in as an
+npm workspace, so this one `npm install` at the root covers both.
 
 ## Development
 
@@ -44,8 +48,7 @@ npm test             # node:test on src/engine, then vitest on src/ui
 npm run format        # prettier --check .
 ```
 
-`src/ui/` is a separate Vite package with its own scripts, reachable from
-the root via:
+`src/ui/`'s own scripts are reachable from the root via:
 
 ```bash
 npm run dev:ui        # vite dev server with HMR (UI only, no live data)
