@@ -2,20 +2,27 @@ import styled from 'styled-components'
 
 // Components
 import { Badge } from './ui/Badge'
+import { Button } from './ui/Button'
 
 // Utils
 import { fileBadgeStatus, fileLineStats } from '../lib/summary'
 
 // Types
-import type { ReviewFile } from '../types'
+import type { HunkStatus, ReviewFile } from '../types'
 
 interface FileListProps {
   files: ReviewFile[]
   currentPath: string | null
   onSelectFile: (index: number) => void
+  onBulkSetStatus: (file: ReviewFile, status: HunkStatus) => void
 }
 
-export function FileList({ files, currentPath, onSelectFile }: FileListProps) {
+export function FileList({
+  files,
+  currentPath,
+  onSelectFile,
+  onBulkSetStatus,
+}: FileListProps) {
   return (
     <Nav aria-label="Changed files">
       {files.map((file, index) => {
@@ -31,6 +38,32 @@ export function FileList({ files, currentPath, onSelectFile }: FileListProps) {
             <Stat>
               <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
             </Stat>
+            {file.hunks.length > 0 && (
+              <BulkActions>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Approve all hunks in this file"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onBulkSetStatus(file, 'approved')
+                  }}
+                >
+                  ✓
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  title="Reject all hunks in this file"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onBulkSetStatus(file, 'rejected')
+                  }}
+                >
+                  ✕
+                </Button>
+              </BulkActions>
+            )}
           </Item>
         )
       })}
@@ -47,6 +80,17 @@ const Nav = styled.nav`
   background: ${({ theme }) => theme.colors.background};
 `
 
+const Stat = styled.span`
+  font-family: ${({ theme }) => theme.fonts.mono};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+`
+
+const BulkActions = styled.div`
+  display: none;
+  flex: none;
+  gap: ${({ theme }) => theme.spacing[1]};
+`
+
 const Item = styled.div<{ $current: boolean }>`
   display: flex;
   align-items: center;
@@ -60,6 +104,14 @@ const Item = styled.div<{ $current: boolean }>`
   &:hover {
     background: ${({ theme }) => theme.colors.tertiary};
   }
+
+  &:hover ${Stat} {
+    display: none;
+  }
+
+  &:hover ${BulkActions} {
+    display: flex;
+  }
 `
 
 const Path = styled.span`
@@ -68,11 +120,6 @@ const Path = styled.span`
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: ${({ theme }) => theme.fonts.mono};
-`
-
-const Stat = styled.span`
-  font-family: ${({ theme }) => theme.fonts.mono};
-  font-size: ${({ theme }) => theme.fontSizes.xs};
 `
 
 const StatAdd = styled.span`
