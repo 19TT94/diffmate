@@ -6,11 +6,11 @@ import path from 'node:path'
 import { test } from 'node:test'
 
 // Engine
-import { startReviewServer } from './httpServer.js'
-import { ReviewSession } from './session.js'
+import { startReviewServer } from '../httpServer.js'
+import { ReviewSession } from '../session.js'
 
 // Types
-import type { ParsedFile } from './types.js'
+import type { ParsedFile } from '../types.js'
 
 function fixtureFiles(): ParsedFile[] {
   return [
@@ -44,10 +44,13 @@ async function withServer(
   const uiDir = await mkdtemp(path.join(tmpdir(), 'diffmate-ui-'))
   await writeFile(path.join(uiDir, 'index.html'), '<h1>diffmate</h1>')
 
+  const repoRoot = await mkdtemp(path.join(tmpdir(), 'diffmate-repo-'))
+  await writeFile(path.join(repoRoot, 'a.txt'), 'line one\nline two\n')
+
   const session = new ReviewSession('cli', {}, fixtureFiles())
-  const server = await startReviewServer(session, uiDir)
+  const server = await startReviewServer(session, uiDir, repoRoot)
   const apiUrl = (pathname: string): string =>
-    `http://127.0.0.1:${server.port}${pathname}?token=${server.token}`
+    `http://127.0.0.1:${server.port}${pathname}${pathname.includes('?') ? '&' : '?'}token=${server.token}`
 
   try {
     await run(server, session, apiUrl)
@@ -139,6 +142,40 @@ test('POST /api/hunks/:id/comment updates the comment', async () => {
     })
     assert.equal(res.status, 200)
     assert.equal(session.files[0]!.hunks[0]!.comment, 'looks off')
+  })
+})
+
+test('POST /api/hunks/:id/edit updates the edited content', async () => {
+  await withServer(async (_server, session, apiUrl) => {
+    const res = await fetch(apiUrl('/api/hunks/a.txt@@hunk1/edit'), {
+      method: 'POST',
+      body: JSON.stringify({ editedContent: 'const x = 1' }),
+    })
+    assert.equal(res.status, 200)
+    assert.equal(session.files[0]!.hunks[0]!.editedContent, 'const x = 1')
+  })
+})
+
+test('GET /api/files/content returns the current file content', async () => {
+  await withServer(async (_server, _session, apiUrl) => {
+    const res = await fetch(apiUrl('/api/files/content?path=a.txt'))
+    assert.equal(res.status, 200)
+    const body = await res.json()
+    assert.equal(body.content, 'line one\nline two\n')
+  })
+})
+
+test('GET /api/files/content 404s for a missing file', async () => {
+  await withServer(async (_server, _session, apiUrl) => {
+    const res = await fetch(apiUrl('/api/files/content?path=missing.txt'))
+    assert.equal(res.status, 404)
+  })
+})
+
+test('GET /api/files/content 400s without a path', async () => {
+  await withServer(async (_server, _session, apiUrl) => {
+    const res = await fetch(apiUrl('/api/files/content'))
+    assert.equal(res.status, 400)
   })
 })
 

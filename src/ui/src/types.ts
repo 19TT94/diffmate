@@ -32,6 +32,7 @@ export interface Hunk {
   lines: DiffLine[]
   status: HunkStatus
   comment: string | null
+  editedContent: string | null
   questions: Question[]
 }
 

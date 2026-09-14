@@ -6,7 +6,8 @@ const TOKEN = new URLSearchParams(window.location.search).get('token') ?? ''
 // Only /api/* is token-gated on the server; the static shell that loads
 // this file has no user data in it. See engine/httpServer.ts.
 function apiUrl(pathname: string): string {
-  return `${pathname}?token=${encodeURIComponent(TOKEN)}`
+  const sep = pathname.includes('?') ? '&' : '?'
+  return `${pathname}${sep}token=${encodeURIComponent(TOKEN)}`
 }
 
 async function apiFetch<T>(
@@ -47,6 +48,21 @@ export function setHunkComment(
     headers: JSON_HEADERS,
     body: JSON.stringify({ comment }),
   })
+}
+
+export function setHunkEditedContent(
+  hunkId: string,
+  editedContent: string | null,
+): Promise<void> {
+  return apiFetch(`/api/hunks/${encodeURIComponent(hunkId)}/edit`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ editedContent }),
+  })
+}
+
+export function fetchFileContent(path: string): Promise<{ content: string }> {
+  return apiFetch(`/api/files/content?path=${encodeURIComponent(path)}`)
 }
 
 export function submitReview(): Promise<void> {

@@ -116,7 +116,7 @@ Shared UI in `components/ui/` may colocate styled definitions with exports.
 
 ## General
 
-- Co-locate tests in `__test__/` next to the module under test
+- Co-locate tests in `__tests__/` next to the module under test
   (`vitest` + `@testing-library/react`; theme-aware render helper in
   `src/test/render.tsx`).
 - Only commit when explicitly asked.

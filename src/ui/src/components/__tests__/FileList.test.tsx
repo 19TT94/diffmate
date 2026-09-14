@@ -21,6 +21,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     lines: [],
     status: 'pending',
     comment: null,
+    editedContent: null,
     questions: [],
     ...overrides,
   }
@@ -90,5 +91,29 @@ describe('FileList', () => {
     expect(
       document.querySelector('button[title="Approve all hunks in this file"]'),
     ).toBeNull()
+  })
+
+  it('hides the file rows when collapsed, and shows them again when expanded', async () => {
+    const user = userEvent.setup()
+    renderWithTheme(
+      <FileList
+        files={[fixtureFile()]}
+        currentPath={null}
+        onSelectFile={() => {}}
+        onBulkSetStatus={() => {}}
+      />,
+    )
+
+    expect(document.body.textContent).toContain('a.txt')
+
+    await user.click(
+      document.querySelector('button[title="Hide changed files"]')!,
+    )
+    expect(document.body.textContent).not.toContain('a.txt')
+
+    await user.click(
+      document.querySelector('button[title="Show changed files"]')!,
+    )
+    expect(document.body.textContent).toContain('a.txt')
   })
 })

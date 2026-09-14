@@ -1,21 +1,27 @@
-import { useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import styled from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
-
-// Utils
-import { buildSideBySideRows } from '../lib/diff'
+import { FullFileColumn } from './FullFileColumn'
 
 // Types
 import type { DiffLine, Hunk, HunkStatus } from '../types'
+
+const MIN_OLD_WIDTH = 120
+const MAX_OLD_WIDTH = 600
 
 interface HunkViewProps {
   hunk: Hunk
   isFocused: boolean
   onFocus: () => void
   onSetStatus: (status: HunkStatus) => void
-  onSetComment: (comment: string | null) => void
+  onSetEditedContent: (editedContent: string | null) => void
+  fileContent: string | null
+  fileContentError: string | null
+  fileContentLoading: boolean
+  oldColumnWidth: number
+  onOldColumnWidthChange: (width: number) => void
 }
 
 export function HunkView({
@@ -23,16 +29,30 @@ export function HunkView({
   isFocused,
   onFocus,
   onSetStatus,
-  onSetComment,
+  onSetEditedContent,
+  fileContent,
+  fileContentError,
+  fileContentLoading,
+  oldColumnWidth,
+  onOldColumnWidthChange,
 }: HunkViewProps) {
-  const [draft, setDraft] = useState(hunk.comment ?? '')
-  const rows = buildSideBySideRows(hunk.lines)
+  function handleResizeStart(event: ReactMouseEvent): void {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = oldColumnWidth
 
-  function handleBlur(): void {
-    const trimmed = draft.trim()
-    if (trimmed !== (hunk.comment ?? '')) {
-      onSetComment(trimmed === '' ? null : trimmed)
+    function handleMouseMove(moveEvent: MouseEvent): void {
+      const next = startWidth + (moveEvent.clientX - startX)
+      onOldColumnWidthChange(
+        Math.min(Math.max(next, MIN_OLD_WIDTH), MAX_OLD_WIDTH),
+      )
     }
+    function handleMouseUp(): void {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
   }
 
   return (
@@ -64,48 +84,45 @@ export function HunkView({
         </Button>
       </Toolbar>
 
-      <Rows>
-        <Side $side="left">
-          {rows.map((row, index) => (
-            <Line key={index} line={row.left} side="old" />
+      <Rows style={{ gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }}>
+        <OldSide>
+          {hunk.lines.map((line, index) => (
+            <Line key={index} line={line} />
           ))}
-        </Side>
-        <Side $side="right">
-          {rows.map((row, index) => (
-            <Line key={index} line={row.right} side="new" />
-          ))}
-        </Side>
+        </OldSide>
+        <Resizer onMouseDown={handleResizeStart} />
+        <NewSide>
+          <FullFileColumn
+            content={fileContent}
+            error={fileContentError}
+            loading={fileContentLoading}
+            hunk={hunk}
+            editedContent={hunk.editedContent}
+            onSetEditedContent={onSetEditedContent}
+          />
+        </NewSide>
       </Rows>
-
-      <CommentWrap>
-        <textarea
-          id={`comment-${hunk.id}`}
-          placeholder="Leave a comment on this hunk…"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={handleBlur}
-        />
-      </CommentWrap>
     </Container>
   )
 }
 
-function Line({ line, side }: { line: DiffLine | null; side: 'old' | 'new' }) {
-  if (!line) return <LineRow $type="empty" />
-  const num = side === 'old' ? line.oldLineNumber : line.newLineNumber
+function Line({ line }: { line: DiffLine }) {
   return (
     <LineRow $type={line.type}>
-      <LineNo>{num === null ? '' : num}</LineNo>
-      <span>{line.content}</span>
+      <LineNo>{line.oldLineNumber === null ? '-' : line.oldLineNumber}</LineNo>
+      <Content>{line.content}</Content>
     </LineRow>
   )
 }
 
 // Style Overrides
 const Container = styled.div<{ $focused: boolean }>`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.md};
-  margin-bottom: ${({ theme }) => theme.spacing[3]};
   overflow: hidden;
   outline: ${({ $focused, theme }) => ($focused ? `2px solid ${theme.colors.primary}` : 'none')};
   outline-offset: -1px;
@@ -130,26 +147,50 @@ const Header = styled.span`
   white-space: nowrap;
 `
 
+// Old (before) and new (after) are no longer row-aligned: the new side now
+// shows the whole file, not just this hunk's lines, so a narrow, resizable
+// reference strip on the left and a wide, prioritized pane on the right
+// replace the old equal-width paired columns. Column width is a genuinely
+// dynamic runtime value (live drag position), so it's set via inline style
+// rather than a styled-components prop. grid-template-rows uses minmax(0,
+// 1fr) rather than 1fr alone so the row can actually shrink to the
+// container's height instead of growing to fit content — the grid
+// equivalent of flexbox's min-height:0 gotcha.
 const Rows = styled.div`
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
   font-family: ${({ theme }) => theme.fonts.mono};
   font-size: ${({ theme }) => theme.fontSizes.xs};
 `
 
-const Side = styled.div<{ $side: 'left' | 'right' }>`
-  overflow-x: auto;
-  border-right: ${({ $side, theme }) => ($side === 'left' ? `1px solid ${theme.colors.border}` : 'none')};
+const OldSide = styled.div`
+  min-height: 0;
+  overflow: auto;
 `
 
-const LineRow = styled.div<{ $type: DiffLine['type'] | 'empty' }>`
+const Resizer = styled.div`
+  cursor: col-resize;
+  background: ${({ theme }) => theme.colors.border};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.primary};
+  }
+`
+
+const NewSide = styled.div`
+  min-height: 0;
+  overflow: hidden;
+`
+
+const LineRow = styled.div<{ $type: DiffLine['type'] }>`
   display: flex;
-  white-space: pre;
+  align-items: flex-start;
   padding: 0 ${({ theme }) => theme.spacing[2]};
   background: ${({ $type, theme }) => {
     if ($type === 'add') return theme.colors.diffAddBg
     if ($type === 'del') return theme.colors.diffDelBg
-    if ($type === 'empty') return theme.colors.background
     return 'transparent'
   }};
 `
@@ -163,18 +204,9 @@ const LineNo = styled.span`
   user-select: none;
 `
 
-const CommentWrap = styled.div`
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-  padding: ${({ theme }) => theme.spacing[2]} ${({ theme }) => theme.spacing[3]};
-
-  textarea {
-    width: 100%;
-    min-height: 44px;
-    font-size: ${({ theme }) => theme.fontSizes.xs};
-    padding: ${({ theme }) => theme.spacing[1]}
-      ${({ theme }) => theme.spacing[2]};
-    border: 1px solid ${({ theme }) => theme.colors.border};
-    border-radius: ${({ theme }) => theme.radii.md};
-    resize: vertical;
-  }
+const Content = styled.span`
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 `

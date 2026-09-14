@@ -5,6 +5,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 
 // Engine
+import { readFileContent } from './git.js'
 import type { ReviewSession } from './session.js'
 
 // Types
@@ -20,6 +21,8 @@ const CONTENT_TYPES: Record<string, string> = {
 const VALID_STATUSES: HunkStatus[] = ['pending', 'approved', 'rejected']
 const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
+const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
+const FILE_CONTENT_PATH = '/api/files/content'
 
 // Events the browser's SSE connection forwards from the session bus. Kept as
 // an explicit allowlist so the stream only ever carries known event shapes.
@@ -40,11 +43,12 @@ export interface ReviewServer {
 export async function startReviewServer(
   session: ReviewSession,
   uiDir: string,
+  repoRoot: string,
 ): Promise<ReviewServer> {
   const token = randomUUID()
 
   const server = createServer((req, res) => {
-    handleRequest(req, res, session, token, uiDir).catch((error) => {
+    handleRequest(req, res, session, token, uiDir, repoRoot).catch((error) => {
       if (!res.headersSent) {
         sendJson(res, 500, {
           error: error instanceof Error ? error.message : String(error),
@@ -81,6 +85,7 @@ async function handleRequest(
   session: ReviewSession,
   token: string,
   uiDir: string,
+  repoRoot: string,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const { pathname } = url
@@ -146,6 +151,28 @@ async function handleRequest(
       const body = (await readJsonBody(req)) as { comment?: string | null }
       session.setHunkComment(hunkId, body.comment ?? null)
       sendJson(res, 200, { ok: true })
+      return
+    }
+
+    const editMatch = pathname.match(HUNK_EDIT_RE)
+    if (method === 'POST' && editMatch) {
+      const hunkId = decodeURIComponent(editMatch[1]!)
+      const body = (await readJsonBody(req)) as {
+        editedContent?: string | null
+      }
+      session.setHunkEditedContent(hunkId, body.editedContent ?? null)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    if (method === 'GET' && pathname === FILE_CONTENT_PATH) {
+      const relPath = url.searchParams.get('path')
+      if (!relPath) {
+        sendJson(res, 400, { error: 'path is required' })
+        return
+      }
+      const content = await readFileContent(repoRoot, relPath, session.scope)
+      sendJson(res, 200, { content })
       return
     }
 

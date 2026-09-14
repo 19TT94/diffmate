@@ -46,6 +46,10 @@ export interface Question {
 export interface ReviewHunk extends Hunk {
   status: HunkStatus
   comment: string | null
+  // A user-proposed rewrite of the hunk's new-side code, attached as review
+  // feedback for the agent to read and apply itself — never written to
+  // disk, same as `comment`.
+  editedContent: string | null
   questions: Question[]
 }
 

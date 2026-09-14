@@ -35,7 +35,7 @@ for (const relPath of raw.untrackedFiles) {
 }
 
 const session = new ReviewSession('cli', {}, files)
-const server = await startReviewServer(session, uiDir)
+const server = await startReviewServer(session, uiDir, raw.repoRoot)
 
 console.log(`Reviewing: ${raw.repoRoot}`)
 console.log(`Open: ${server.url}`)

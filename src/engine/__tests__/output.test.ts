@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 // Engine
-import { buildMarkdown, buildReport, renderJson } from './output.js'
-import { ReviewSession } from './session.js'
+import { buildMarkdown, buildReport, renderJson } from '../output.js'
+import { ReviewSession } from '../session.js'
 
 // Types
-import type { Hunk, ParsedFile } from './types.js'
+import type { Hunk, ParsedFile } from '../types.js'
 
 // Fixture: one approved-no-comment, one approved-with-comment, two rejected
 // (one commented), one pending-no-comment, one pending-with-comment — every
@@ -151,6 +151,31 @@ test('renderMarkdown handles a session with no hunks', () => {
   assert.ok(!markdown.includes('## Approved'))
   assert.ok(!markdown.includes('## Rejected'))
   assert.ok(!markdown.includes('## Comments'))
+})
+
+test('buildReport does not drop an approved hunk that only has edited content', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  session.setHunkStatus('a1', 'approved')
+  session.setHunkEditedContent('a1', 'gamma')
+  const report = buildReport(session)
+
+  assert.deepEqual(
+    report.approvedWithNotes.map((entry) => entry.hunkId),
+    ['a1'],
+  )
+  assert.equal(report.approvedWithNotes[0]!.comment, null)
+  assert.equal(report.approvedWithNotes[0]!.editedContent, 'gamma')
+})
+
+test('renderMarkdown includes a Suggested rewrite block for edited content', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  session.setHunkStatus('a1', 'approved')
+  session.setHunkEditedContent('a1', 'gamma')
+  const markdown = buildMarkdown(session)
+
+  assert.ok(markdown.includes('**Suggested rewrite:**'))
+  assert.ok(markdown.includes('```\ngamma\n```'))
+  assert.ok(markdown.includes('> (no comment provided)'))
 })
 
 test('renderJson emits counts and the same three sections', () => {
