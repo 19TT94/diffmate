@@ -5,6 +5,7 @@ import {
   connectEvents,
   fetchSession,
   setHunkComment as apiSetHunkComment,
+  setHunkEditedContent as apiSetHunkEditedContent,
   setHunkStatus as apiSetHunkStatus,
   submitReview as apiSubmitReview,
 } from '../lib/api'
@@ -72,6 +73,14 @@ export function useReviewSession() {
     [refresh],
   )
 
+  const setHunkEditedContent = useCallback(
+    async (hunkId: string, editedContent: string | null) => {
+      await apiSetHunkEditedContent(hunkId, editedContent)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const submitReview = useCallback(async () => {
     await apiSubmitReview()
     await refresh()
@@ -83,6 +92,7 @@ export function useReviewSession() {
     setFocusedHunkId,
     setHunkStatus,
     setHunkComment,
+    setHunkEditedContent,
     submitReview,
   }
 }

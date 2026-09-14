@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import styled from 'styled-components'
 
 // Components
@@ -23,61 +24,80 @@ export function FileList({
   onSelectFile,
   onBulkSetStatus,
 }: FileListProps) {
+  // Simplest possible collapse for now — local, not persisted, no animation.
+  const [collapsed, setCollapsed] = useState(false)
+
   return (
-    <Nav aria-label="Changed files">
-      {files.map((file, index) => {
-        const { add, del } = fileLineStats(file)
-        return (
-          <Item
-            key={file.path}
-            $current={file.path === currentPath}
-            onClick={() => onSelectFile(index)}
-          >
-            <Badge status={fileBadgeStatus(file)} />
-            <Path>{file.path}</Path>
-            <Stat>
-              <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
-            </Stat>
-            {file.hunks.length > 0 && (
-              <BulkActions>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Approve all hunks in this file"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onBulkSetStatus(file, 'approved')
-                  }}
-                >
-                  ✓
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Reject all hunks in this file"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onBulkSetStatus(file, 'rejected')
-                  }}
-                >
-                  ✕
-                </Button>
-              </BulkActions>
-            )}
-          </Item>
-        )
-      })}
+    <Nav aria-label="Changed files" $collapsed={collapsed}>
+      <ToggleButton
+        size="sm"
+        variant="ghost"
+        title={collapsed ? 'Show changed files' : 'Hide changed files'}
+        onClick={() => setCollapsed((value) => !value)}
+      >
+        {collapsed ? '›' : '‹'}
+      </ToggleButton>
+      {collapsed
+        ? null
+        : files.map((file, index) => {
+            const { add, del } = fileLineStats(file)
+            return (
+              <Item
+                key={file.path}
+                $current={file.path === currentPath}
+                onClick={() => onSelectFile(index)}
+              >
+                <Badge status={fileBadgeStatus(file)} />
+                <Path>{file.path}</Path>
+                <Stat>
+                  <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
+                </Stat>
+                {file.hunks.length > 0 && (
+                  <BulkActions>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Approve all hunks in this file"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onBulkSetStatus(file, 'approved')
+                      }}
+                    >
+                      ✓
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Reject all hunks in this file"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onBulkSetStatus(file, 'rejected')
+                      }}
+                    >
+                      ✕
+                    </Button>
+                  </BulkActions>
+                )}
+              </Item>
+            )
+          })}
     </Nav>
   )
 }
 
 // Style Overrides
-const Nav = styled.nav`
-  width: 280px;
+const Nav = styled.nav<{ $collapsed: boolean }>`
+  width: ${({ $collapsed }) => ($collapsed ? '32px' : '280px')};
   flex: none;
   overflow-y: auto;
   border-right: 1px solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) => theme.colors.background};
+`
+
+const ToggleButton = styled(Button)`
+  display: flex;
+  width: 100%;
+  justify-content: center;
 `
 
 const Stat = styled.span`

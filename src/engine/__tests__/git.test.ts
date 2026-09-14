@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { promisify } from 'node:util'
 
 // Engine
-import { findRepoRoot, resolveDiff } from './git.js'
+import { findRepoRoot, resolveDiff } from '../git.js'
 
 const execFileAsync = promisify(execFile)
 

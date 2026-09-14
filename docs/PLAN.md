@@ -103,7 +103,7 @@ UI (`src/ui/`, its own package):
 - No router, no TanStack Query: single-screen app against one
   `ReviewSession`, so neither earns its keep here the way it does in a
   multi-route CRUD app.
-- Dev-only: `vitest` + `@testing-library/react` for colocated `__test__/`
+- Dev-only: `vitest` + `@testing-library/react` for colocated `__tests__/`
   component/hook tests; `eslint` (flat config, `typescript-eslint` +
   `eslint-plugin-react-hooks` + `eslint-plugin-react-refresh`).
 - Talks to the engine purely over the REST/SSE contract `httpServer.ts`

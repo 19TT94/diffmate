@@ -26,6 +26,9 @@ export interface ReviewEntry {
   hunkHeader: string
   status: HunkStatus
   comment: string | null
+  // A user-proposed rewrite of the hunk's code, attached as feedback for
+  // the agent to read and apply itself — diffmate never writes it to disk.
+  editedContent: string | null
   // The hunk's lines rendered back as unified-diff text, so consumers
   // (the CLI's markdown, the MCP agent reading JSON) see the code itself
   // without needing the original diff text.
@@ -59,12 +62,13 @@ export function buildReport(session: ReviewSession): Report {
       else pending++
       if (hunk.comment !== null) commented++
 
-      if (hunk.status === 'approved' && hunk.comment === null) continue
+      const hasFeedback = hunk.comment !== null || hunk.editedContent !== null
+      if (hunk.status === 'approved' && !hasFeedback) continue
 
       const entry = toEntry(file.path, hunk)
       if (hunk.status === 'rejected') {
         rejected.push(entry)
-      } else if (hunk.comment !== null) {
+      } else if (hasFeedback) {
         if (hunk.status === 'approved') approvedWithNotes.push(entry)
         else comments.push(entry)
       }
@@ -93,20 +97,31 @@ function toEntry(filePath: string, hunk: ReviewHunk): ReviewEntry {
     hunkHeader: hunk.header,
     status: hunk.status,
     comment: hunk.comment,
+    editedContent: hunk.editedContent,
     diff: renderDiff(hunk),
   }
 }
 
 function renderEntry(entry: ReviewEntry): string {
-  return [
+  const parts = [
     `### ${entry.filePath} (${entry.hunkHeader})`,
     '',
     '```diff',
     entry.diff,
     '```',
-    '',
-    `> ${entry.comment ?? NO_COMMENT}`,
-  ].join('\n')
+  ]
+  if (entry.editedContent !== null) {
+    parts.push(
+      '',
+      '**Suggested rewrite:**',
+      '',
+      '```',
+      entry.editedContent,
+      '```',
+    )
+  }
+  parts.push('', `> ${entry.comment ?? NO_COMMENT}`)
+  return parts.join('\n')
 }
 
 function renderSection(

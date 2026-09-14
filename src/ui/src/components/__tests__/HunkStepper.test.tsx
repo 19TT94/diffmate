@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -9,6 +10,13 @@ import { renderWithTheme } from '../../test/render'
 
 // Types
 import type { Hunk, ReviewFile } from '../../types'
+
+// HunkStepper's own useFileContent call is exercised by
+// hooks/__tests__/useFileContent.test.ts — stub it here so these tests don't
+// make a real network request and stay focused on HunkStepper's wiring.
+vi.mock('../../hooks/useFileContent', () => ({
+  useFileContent: () => ({ content: null, error: null, loading: false }),
+}))
 
 function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
   return {
@@ -23,6 +31,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     ],
     status: 'pending',
     comment: null,
+    editedContent: null,
     questions: [],
     ...overrides,
   }
@@ -56,7 +65,7 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
 
@@ -76,7 +85,7 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={onSetStatus}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
 
@@ -98,7 +107,7 @@ describe('HunkStepper', () => {
         onPrev={onPrev}
         onNext={onNext}
         onSetStatus={() => {}}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
 
@@ -119,7 +128,7 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
 
@@ -127,36 +136,46 @@ describe('HunkStepper', () => {
     expect(findButton('Next ›')).toBeDisabled()
   })
 
-  it('does not carry a stale comment draft over when the hunk changes', () => {
-    const { rerender } = renderWithTheme(
+  it('keeps a resized old-column width when stepping to a different hunk', () => {
+    const { container, rerender } = renderWithTheme(
       <HunkStepper
         file={fixtureFile()}
-        hunk={fixtureHunk({ id: 'h1', comment: 'leftover from hunk 1' })}
+        hunk={fixtureHunk({ id: 'h1' })}
         index={0}
         total={2}
         onPrev={null}
         onNext={() => {}}
         onSetStatus={() => {}}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
-    expect(document.querySelector('textarea')).toHaveValue(
-      'leftover from hunk 1',
-    )
+
+    const resizer = container.querySelector('[style*="grid-template-columns"]')!
+      .children[1] as HTMLElement
+    fireEvent.mouseDown(resizer, { clientX: 100 })
+    fireEvent.mouseMove(document, { clientX: 200 })
+
+    const rowsBefore = container.querySelector(
+      '[style*="grid-template-columns"]',
+    )!
+    expect(rowsBefore.getAttribute('style')).toContain('320px')
 
     rerender(
       <HunkStepper
         file={fixtureFile()}
-        hunk={fixtureHunk({ id: 'h2', comment: null })}
+        hunk={fixtureHunk({ id: 'h2' })}
         index={1}
         total={2}
         onPrev={() => {}}
         onNext={null}
         onSetStatus={() => {}}
-        onSetComment={() => {}}
+        onSetEditedContent={() => {}}
       />,
     )
 
-    expect(document.querySelector('textarea')).toHaveValue('')
+    const rowsAfter = container.querySelector(
+      '[style*="grid-template-columns"]',
+    )!
+    expect(rowsAfter.getAttribute('style')).toContain('320px')
   })
 })

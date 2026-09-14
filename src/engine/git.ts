@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 const MAX_BUFFER = 64 * 1024 * 1024
+const MAX_FILE_CONTENT_BYTES = 2 * 1024 * 1024
 
 export interface DiffScope {
   staged?: boolean
@@ -87,4 +88,33 @@ export async function readUntrackedFile(
   relativePath: string,
 ): Promise<string> {
   return readFile(path.join(repoRoot, relativePath), 'utf8')
+}
+
+// Reads a file's full current content for the full-file review pane — the
+// "new" side of whichever scope is being reviewed. `--base` still resolves
+// against the working tree (resolveDiff diffs `<ref>...` with no second
+// ref, i.e. merge-base vs. the working tree), so only `--staged` needs a
+// different source (the index blob) than a plain disk read.
+export async function readFileContent(
+  repoRoot: string,
+  relativePath: string,
+  scope: DiffScope,
+): Promise<string> {
+  if (scope.staged) {
+    const content = await runGit(repoRoot, ['show', `:${relativePath}`])
+    if (Buffer.byteLength(content, 'utf8') > MAX_FILE_CONTENT_BYTES) {
+      throw new Error(`File too large to preview: ${relativePath}`)
+    }
+    return content
+  }
+
+  const absPath = path.join(repoRoot, relativePath)
+  const stats = await stat(absPath).catch(() => null)
+  if (!stats) {
+    throw new Error(`Unknown file: ${relativePath}`)
+  }
+  if (stats.size > MAX_FILE_CONTENT_BYTES) {
+    throw new Error(`File too large to preview: ${relativePath}`)
+  }
+  return readFile(absPath, 'utf8')
 }

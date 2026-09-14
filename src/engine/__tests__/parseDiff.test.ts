@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 // Engine
-import { parseDiff, parseUntrackedFile } from './parseDiff.js'
+import { parseDiff, parseUntrackedFile } from '../parseDiff.js'
 
 test('parses a simple modification', () => {
   const diff = `diff --git a/tracked.txt b/tracked.txt

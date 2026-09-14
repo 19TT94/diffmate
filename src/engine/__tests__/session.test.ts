@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 // Engine
-import { ReviewSession } from './session.js'
+import { ReviewSession } from '../session.js'
 
 // Types
-import type { ParsedFile } from './types.js'
+import type { ParsedFile } from '../types.js'
 
 function fixtureFiles(): ParsedFile[] {
   return [
@@ -39,6 +39,7 @@ test('wraps parsed files with pending status and no comment/questions', () => {
   const [hunk] = session.files[0]!.hunks
   assert.equal(hunk!.status, 'pending')
   assert.equal(hunk!.comment, null)
+  assert.equal(hunk!.editedContent, null)
   assert.deepEqual(hunk!.questions, [])
 })
 
@@ -67,6 +68,19 @@ test('setHunkComment updates comment and emits hunk_updated', () => {
 
   assert.equal(session.files[0]!.hunks[0]!.comment, 'looks off')
   assert.deepEqual(events, [{ hunkId: 'a.txt@@hunk1', comment: 'looks off' }])
+})
+
+test('setHunkEditedContent updates editedContent and emits hunk_updated', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  const events: unknown[] = []
+  session.bus.on('hunk_updated', (payload) => events.push(payload))
+
+  session.setHunkEditedContent('a.txt@@hunk1', 'const x = 1')
+
+  assert.equal(session.files[0]!.hunks[0]!.editedContent, 'const x = 1')
+  assert.deepEqual(events, [
+    { hunkId: 'a.txt@@hunk1', editedContent: 'const x = 1' },
+  ])
 })
 
 test('askQuestion attaches a question to the hunk and emits question_asked', () => {

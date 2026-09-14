@@ -68,4 +68,5 @@ Use only the groups a file needs.
 - TypeScript strict mode, ESM, target Node 18+ (`tsconfig.json`).
 - Formatting via Prettier (`.prettierrc`) — no semicolons, single quotes,
   trailing commas, 80-column width.
+- Engine tests live in `src/engine/__tests__/`.
 - Only commit when explicitly asked.

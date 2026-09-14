@@ -28,6 +28,7 @@ function toReviewFile(file: ParsedFile): ReviewFile {
       ...hunk,
       status: 'pending',
       comment: null,
+      editedContent: null,
       questions: [],
     })),
   }
@@ -85,6 +86,12 @@ export class ReviewSession {
     const { hunk } = this.requireHunk(hunkId)
     hunk.comment = comment
     this.bus.emit('hunk_updated', { hunkId, comment })
+  }
+
+  setHunkEditedContent(hunkId: string, editedContent: string | null): void {
+    const { hunk } = this.requireHunk(hunkId)
+    hunk.editedContent = editedContent
+    this.bus.emit('hunk_updated', { hunkId, editedContent })
   }
 
   askQuestion(hunkId: string, text: string): Question {

@@ -1,11 +1,17 @@
+import { useState } from 'react'
 import styled from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
 import { HunkView } from './HunkView'
 
+// Hooks
+import { useFileContent } from '../hooks/useFileContent'
+
 // Types
 import type { Hunk, HunkStatus, ReviewFile } from '../types'
+
+const DEFAULT_OLD_COLUMN_WIDTH = 220
 
 interface HunkStepperProps {
   file: ReviewFile
@@ -15,7 +21,7 @@ interface HunkStepperProps {
   onPrev: (() => void) | null
   onNext: (() => void) | null
   onSetStatus: (hunkId: string, status: HunkStatus) => void
-  onSetComment: (hunkId: string, comment: string | null) => void
+  onSetEditedContent: (hunkId: string, editedContent: string | null) => void
 }
 
 export function HunkStepper({
@@ -26,8 +32,17 @@ export function HunkStepper({
   onPrev,
   onNext,
   onSetStatus,
-  onSetComment,
+  onSetEditedContent,
 }: HunkStepperProps) {
+  const {
+    content: fileContent,
+    error: fileContentError,
+    loading: fileContentLoading,
+  } = useFileContent(file.path)
+  // Lives here, not in HunkView, so a resize sticks as you step between
+  // hunks — HunkView is keyed by hunk.id and remounts on every step.
+  const [oldColumnWidth, setOldColumnWidth] = useState(DEFAULT_OLD_COLUMN_WIDTH)
+
   return (
     <Wrap>
       <Header>
@@ -43,7 +58,14 @@ export function HunkStepper({
         isFocused={false}
         onFocus={() => {}}
         onSetStatus={(status) => onSetStatus(hunk.id, status)}
-        onSetComment={(comment) => onSetComment(hunk.id, comment)}
+        onSetEditedContent={(editedContent) =>
+          onSetEditedContent(hunk.id, editedContent)
+        }
+        fileContent={fileContent}
+        fileContentError={fileContentError}
+        fileContentLoading={fileContentLoading}
+        oldColumnWidth={oldColumnWidth}
+        onOldColumnWidthChange={setOldColumnWidth}
       />
 
       <Nav>
@@ -70,8 +92,11 @@ export function HunkStepper({
 
 // Style Overrides
 const Wrap = styled.div`
-  max-width: 900px;
-  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
 `
 
 const Header = styled.div`
