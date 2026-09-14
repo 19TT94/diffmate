@@ -1,15 +1,17 @@
-import { useEffect } from 'react'
 import styled from 'styled-components'
 
 // Components
 import { Banner } from './components/Banner'
 import { FileList } from './components/FileList'
-import { FileSection } from './components/FileSection'
+import { HunkStepper } from './components/HunkStepper'
 import { TopBar } from './components/TopBar'
 
 // Hooks
 import { flattenHunks, useReviewSession } from './hooks/useReviewSession'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+
+// Utils
+import { findNextPendingHunkId } from './lib/hunkNav'
 
 // Types
 import type { HunkStatus, ReviewFile } from './types'
@@ -27,28 +29,41 @@ const App = () => {
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =
     session?.files.map((file) => file.hunks.map((hunk) => hunk.id)) ?? []
-  const currentPath =
-    flatHunks.find((entry) => entry.hunk.id === focusedHunkId)?.file.path ??
-    null
-
-  useEffect(() => {
-    if (!focusedHunkId) return
-    document
-      .getElementById(`hunk-${focusedHunkId}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [focusedHunkId])
+  const currentIndex = flatHunks.findIndex(
+    (entry) => entry.hunk.id === focusedHunkId,
+  )
+  const currentEntry = currentIndex === -1 ? null : flatHunks[currentIndex]!
+  const currentPath = currentEntry?.file.path ?? null
 
   function onSelectFile(index: number): void {
-    document
-      .getElementById(`file-section-${index}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const firstHunkId = hunkIdsByFile[index]?.[0]
+    if (firstHunkId) setFocusedHunkId(firstHunkId)
   }
 
   function onFocusComment(hunkId: string): void {
     document.getElementById(`comment-${hunkId}`)?.focus()
   }
 
-  function onBulkSetStatus(file: ReviewFile, status: HunkStatus): void {
+  // Advances focus to whatever pending work is left after deciding a hunk,
+  // wrapping across file boundaries — the optimistic setFocusedHunkId is
+  // safe because useReviewSession's refresh() (triggered by setHunkStatus)
+  // keeps it as long as it still names a real hunk once the session re-fetches.
+  function handleSetStatus(hunkId: string, status: HunkStatus): void {
+    const next = findNextPendingHunkId(
+      flatHunks.map((entry) => entry.hunk),
+      hunkId,
+    )
+    if (next) setFocusedHunkId(next)
+    setHunkStatus(hunkId, status)
+  }
+
+  function handleBulkSetStatus(file: ReviewFile, status: HunkStatus): void {
+    const lastHunkId = file.hunks.at(-1)?.id ?? null
+    const next = findNextPendingHunkId(
+      flatHunks.map((entry) => entry.hunk),
+      lastHunkId,
+    )
+    if (next) setFocusedHunkId(next)
     for (const hunk of file.hunks) setHunkStatus(hunk.id, status)
   }
 
@@ -56,7 +71,7 @@ const App = () => {
     hunkIdsByFile,
     focusedHunkId,
     onFocusHunk: setFocusedHunkId,
-    onSetStatus: setHunkStatus,
+    onSetStatus: handleSetStatus,
     onFocusComment,
     onSubmit: submitReview,
   })
@@ -77,23 +92,34 @@ const App = () => {
           files={session.files}
           currentPath={currentPath}
           onSelectFile={onSelectFile}
+          onBulkSetStatus={handleBulkSetStatus}
         />
         <FileView>
           {session.files.length === 0 ? (
             <EmptyState>No changes to review.</EmptyState>
+          ) : currentEntry ? (
+            <HunkStepper
+              file={currentEntry.file}
+              hunk={currentEntry.hunk}
+              index={currentIndex}
+              total={flatHunks.length}
+              onPrev={
+                currentIndex > 0
+                  ? () => setFocusedHunkId(flatHunks[currentIndex - 1]!.hunk.id)
+                  : null
+              }
+              onNext={
+                currentIndex < flatHunks.length - 1
+                  ? () => setFocusedHunkId(flatHunks[currentIndex + 1]!.hunk.id)
+                  : null
+              }
+              onSetStatus={handleSetStatus}
+              onSetComment={setHunkComment}
+            />
           ) : (
-            session.files.map((file, index) => (
-              <FileSection
-                key={file.path}
-                file={file}
-                index={index}
-                focusedHunkId={focusedHunkId}
-                onFocusHunk={setFocusedHunkId}
-                onSetHunkStatus={setHunkStatus}
-                onSetHunkComment={setHunkComment}
-                onBulkSetStatus={onBulkSetStatus}
-              />
-            ))
+            <EmptyState>
+              Nothing to review — see the file list for status.
+            </EmptyState>
           )}
         </FileView>
       </Layout>
