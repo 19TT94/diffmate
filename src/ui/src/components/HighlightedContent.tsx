@@ -1,7 +1,11 @@
 import styled from 'styled-components'
 
 // Utils
-import { tokenStyle, type HighlightToken } from '../lib/highlight'
+import {
+  HIGHLIGHT_EDITOR_FG,
+  tokenStyle,
+  type HighlightToken,
+} from '../lib/highlight'
 
 interface HighlightedContentProps {
   tokens: HighlightToken[] | null
@@ -37,6 +41,7 @@ const Content = styled.span`
   min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  color: ${HIGHLIGHT_EDITOR_FG};
 `
 
 const Token = styled.span``

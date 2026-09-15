@@ -9,8 +9,14 @@ import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 // Utils
 import type { HighlightLanguage } from './language'
 
-// Interim default until #21 wires Tokyo Night Night.
-export const DEFAULT_HIGHLIGHT_THEME = 'github-light'
+// Default Shiki theme: VS Code "Tokyo Night" (`tokyo-night`), the stock
+// port closest to nvim `tokyonight-night` / WezTerm `tokyonight_night` in
+// workspace-setup. Custom nvim `on_highlights` overrides are out of scope
+// here (#23). Bg/fg match the theme's editor.* colors so code panes stay
+// readable on the light app chrome.
+export const DEFAULT_HIGHLIGHT_THEME = 'tokyo-night'
+export const HIGHLIGHT_EDITOR_BG = '#1a1b26'
+export const HIGHLIGHT_EDITOR_FG = '#a9b1d6'
 
 export type HighlightToken = ThemedToken
 
@@ -23,7 +29,7 @@ function loadHighlighter(): Promise<HighlighterCore> {
     // Explicit imports (not `import(\`...\${lang}\`)`) so Vite can resolve
     // and split each grammar. Matches the focused set in `language.ts`.
     highlighterPromise = createHighlighterCore({
-      themes: [import('@shikijs/themes/github-light')],
+      themes: [import('@shikijs/themes/tokyo-night')],
       langs: [
         () => import('@shikijs/langs/bash'),
         () => import('@shikijs/langs/css'),
