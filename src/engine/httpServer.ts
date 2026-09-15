@@ -22,6 +22,7 @@ const VALID_STATUSES: HunkStatus[] = ['pending', 'approved', 'rejected']
 const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
+const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
 const FILE_CONTENT_PATH = '/api/files/content'
 
 // Events the browser's SSE connection forwards from the session bus. Kept as
@@ -161,6 +162,15 @@ async function handleRequest(
         editedContent?: string | null
       }
       session.setHunkEditedContent(hunkId, body.editedContent ?? null)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    const fileNotesMatch = pathname.match(FILE_NOTES_RE)
+    if (method === 'POST' && fileNotesMatch) {
+      const path = decodeURIComponent(fileNotesMatch[1]!)
+      const body = (await readJsonBody(req)) as { notes?: string | null }
+      session.setFileNotes(path, body.notes ?? null)
       sendJson(res, 200, { ok: true })
       return
     }

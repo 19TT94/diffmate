@@ -45,6 +45,7 @@ function fixtureFile(overrides: Partial<ReviewFile> = {}): ReviewFile {
     status: 'modified',
     binary: false,
     hunks: [],
+    notes: null,
     ...overrides,
   }
 }
@@ -66,7 +67,6 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
-        onSetEditedContent={() => {}}
       />,
     )
 
@@ -86,7 +86,6 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={onSetStatus}
-        onSetEditedContent={() => {}}
       />,
     )
 
@@ -108,7 +107,6 @@ describe('HunkStepper', () => {
         onPrev={onPrev}
         onNext={onNext}
         onSetStatus={() => {}}
-        onSetEditedContent={() => {}}
       />,
     )
 
@@ -129,7 +127,6 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
-        onSetEditedContent={() => {}}
       />,
     )
 
@@ -147,7 +144,6 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={() => {}}
         onSetStatus={() => {}}
-        onSetEditedContent={() => {}}
       />,
     )
 
@@ -170,7 +166,6 @@ describe('HunkStepper', () => {
         onPrev={() => {}}
         onNext={null}
         onSetStatus={() => {}}
-        onSetEditedContent={() => {}}
       />,
     )
 

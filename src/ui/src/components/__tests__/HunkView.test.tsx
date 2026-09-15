@@ -1,6 +1,6 @@
 import { fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // Components
 import { HunkView } from '../HunkView'
@@ -41,7 +41,7 @@ function renderHunkView(
       isFocused={false}
       onFocus={() => {}}
       onSetStatus={() => {}}
-      onSetEditedContent={() => {}}
+      onFileChange={() => {}}
       fileContent={null}
       fileContentError={null}
       fileContentLoading={false}
@@ -51,10 +51,6 @@ function renderHunkView(
     />,
   )
 }
-
-beforeEach(() => {
-  Element.prototype.scrollIntoView = vi.fn()
-})
 
 describe('HunkView', () => {
   it('calls onSetStatus when Approve is clicked', async () => {
@@ -70,7 +66,7 @@ describe('HunkView', () => {
     expect(onSetStatus).toHaveBeenCalledWith('approved')
   })
 
-  it('renders + in the gutter for additions and - for deletions', () => {
+  it('renders the old-side strip with add/del gutter marks', async () => {
     renderHunkView({
       hunk: fixtureHunk({
         lines: [
@@ -96,20 +92,21 @@ describe('HunkView', () => {
       }),
     })
 
-    const spans = Array.from(document.querySelectorAll('span')).map(
-      (el) => el.textContent,
-    )
-    expect(spans).toContain('removed')
-    expect(spans).toContain('added')
-    expect(spans).toContain('kept')
-    expect(spans).toContain('+')
-    expect(spans).toContain('-')
-    expect(spans).toContain('2')
+    await waitFor(() => {
+      expect(document.querySelector('.cm-content')).not.toBeNull()
+    })
+    expect(document.body.textContent).toContain('removed')
+    expect(document.body.textContent).toContain('added')
+    expect(document.querySelector('.cm-diff-gutter-add')).not.toBeNull()
+    expect(document.querySelector('.cm-diff-gutter-del')).not.toBeNull()
   })
 
-  it('passes fileContent through to the full-file column', () => {
+  it('passes fileContent through to the whole-file editor', async () => {
     renderHunkView({ fileContent: 'one\ntwo\nthree' })
 
+    await waitFor(() => {
+      expect(document.querySelector('.cm-content')).not.toBeNull()
+    })
     expect(document.body.textContent).toContain('one')
     expect(document.body.textContent).toContain('three')
   })
@@ -134,27 +131,26 @@ describe('HunkView', () => {
     expect(document.body.textContent).not.toContain('Summary')
   })
 
-  it('highlights read-only old-side lines for known languages', async () => {
-    renderHunkView({
-      filePath: 'example.ts',
-      hunk: fixtureHunk({
-        lines: [
-          {
-            type: 'add',
-            content: 'const answer = 42',
-            oldLineNumber: null,
-            newLineNumber: 1,
-          },
-        ],
-      }),
-    })
+  it('reports whole-file document changes', async () => {
+    const user = userEvent.setup()
+    const onFileChange = vi.fn()
+    renderHunkView({ fileContent: 'one', onFileChange })
 
     await waitFor(() => {
-      expect(document.querySelector('[data-highlighted]')).not.toBeNull()
+      expect(
+        document.querySelector('[data-testid="cm-editable"]'),
+      ).not.toBeNull()
     })
-    expect(document.querySelector('[data-highlighted]')!.textContent).toContain(
-      'const answer = 42',
-    )
+
+    const host = document.querySelector(
+      '[data-testid="cm-editable"]',
+    ) as HTMLElement
+    await user.click(host.querySelector('.cm-content')!)
+    await user.keyboard('x')
+    await waitFor(() => {
+      expect(onFileChange).toHaveBeenCalled()
+    })
+    expect(onFileChange).toHaveBeenCalledWith(expect.stringContaining('x'))
   })
 
   it('resizes the old column by dragging the divider', () => {

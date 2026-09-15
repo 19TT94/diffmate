@@ -206,3 +206,43 @@ test('renderJson emits counts and the same three sections', () => {
     ['c2'],
   )
 })
+
+test('buildReport collects per-file notes for out-of-hunk edits', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  session.setFileNotes('a.txt', '@@ -3,2 +3,2 @@\n-1\n-2\n+11\n+22')
+
+  const report = buildReport(session)
+
+  assert.deepEqual(report.fileNotes, [
+    { filePath: 'a.txt', notes: '@@ -3,2 +3,2 @@\n-1\n-2\n+11\n+22' },
+  ])
+})
+
+test('buildReport omits files that have no notes', () => {
+  assert.deepEqual(buildReport(reviewedSession()).fileNotes, [])
+})
+
+test('renderMarkdown renders an Additional file edits section', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  session.setFileNotes('b.ts', '@@ -5,1 +5,1 @@\n-alpha\n+beta')
+  const markdown = buildMarkdown(session)
+
+  assert.ok(
+    markdown.includes('## Additional file edits (outside reviewed hunks)'),
+  )
+  assert.ok(markdown.includes('### b.ts'))
+  assert.ok(markdown.includes('```diff\n@@ -5,1 +5,1 @@\n-alpha\n+beta\n```'))
+})
+
+test('renderJson includes fileNotes', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  session.setFileNotes('c.js', '@@ -1,1 +1,1 @@\n-old\n+new')
+  const report = buildReport(session)
+
+  const json = JSON.parse(renderJson(report)) as {
+    fileNotes: { filePath: string }[]
+  }
+  assert.deepEqual(json.fileNotes, [
+    { filePath: 'c.js', notes: '@@ -1,1 +1,1 @@\n-old\n+new' },
+  ])
+})

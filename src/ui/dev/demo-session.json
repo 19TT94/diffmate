@@ -10,6 +10,7 @@
         "oldPath": null,
         "status": "modified",
         "binary": false,
+        "notes": null,
         "hunks": [
           {
             "id": "src/ui/src/components/ui/Button.tsx@@@@ -3,10 +3,13 @@",
@@ -252,6 +253,7 @@
         "oldPath": null,
         "status": "added",
         "binary": false,
+        "notes": null,
         "hunks": [
           {
             "id": "src/ui/src/lib/format.ts@@untracked",
