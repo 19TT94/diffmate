@@ -11,9 +11,9 @@ import { HighlightedContent } from './HighlightedContent'
 
 // Utils
 import { oldSideGutter } from '../lib/gutter'
+import { HIGHLIGHT_EDITOR_BG, type HighlightToken } from '../lib/highlight'
 
 // Types
-import type { HighlightToken } from '../lib/highlight'
 import type { DiffLine, Hunk, HunkStatus } from '../types'
 
 const MIN_OLD_WIDTH = 120
@@ -227,6 +227,7 @@ const Rows = styled.div`
 const OldSide = styled.div`
   min-height: 0;
   overflow: auto;
+  background: ${HIGHLIGHT_EDITOR_BG};
 `
 
 const Resizer = styled.div`
@@ -243,6 +244,7 @@ const NewSide = styled.div`
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: ${HIGHLIGHT_EDITOR_BG};
 `
 
 const LineRow = styled.div<{ $type: DiffLine['type'] }>`

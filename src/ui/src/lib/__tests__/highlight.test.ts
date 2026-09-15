@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 // Utils
-import { highlightLines } from '../highlight'
+import { DEFAULT_HIGHLIGHT_THEME, highlightLines } from '../highlight'
 
 describe('highlightLines', () => {
+  it('defaults to the Tokyo Night theme', () => {
+    expect(DEFAULT_HIGHLIGHT_THEME).toBe('tokyo-night')
+  })
+
   it('returns plain tokens for the text language', async () => {
     const lines = await highlightLines('hello\nworld', 'text')
     expect(lines.map((line) => line.map((token) => token.content))).toEqual([
