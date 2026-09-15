@@ -20,6 +20,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     newLines: 1,
     lines: [],
     status: 'pending',
+    summary: null,
     comment: null,
     editedContent: null,
     questions: [],
@@ -64,7 +65,7 @@ describe('FileList', () => {
   it('calls onSelectFile when a row is clicked outside the bulk actions', async () => {
     const user = userEvent.setup()
     const onSelectFile = vi.fn()
-    renderWithTheme(
+    const { getByText } = renderWithTheme(
       <FileList
         files={[fixtureFile()]}
         currentPath={null}
@@ -73,7 +74,7 @@ describe('FileList', () => {
       />,
     )
 
-    await user.click(document.querySelector('nav div')!)
+    await user.click(getByText('a.txt'))
 
     expect(onSelectFile).toHaveBeenCalledWith(0)
   })

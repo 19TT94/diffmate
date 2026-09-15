@@ -1,11 +1,19 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import styled from 'styled-components'
 
+// Hooks
+import { useHighlightedLines } from '../hooks/useHighlightedLines'
+
 // Components
 import { Button } from './ui/Button'
 import { FullFileColumn } from './FullFileColumn'
+import { HighlightedContent } from './HighlightedContent'
+
+// Utils
+import { oldSideGutter } from '../lib/gutter'
 
 // Types
+import type { HighlightToken } from '../lib/highlight'
 import type { DiffLine, Hunk, HunkStatus } from '../types'
 
 const MIN_OLD_WIDTH = 120
@@ -13,6 +21,7 @@ const MAX_OLD_WIDTH = 600
 
 interface HunkViewProps {
   hunk: Hunk
+  filePath: string
   isFocused: boolean
   onFocus: () => void
   onSetStatus: (status: HunkStatus) => void
@@ -26,6 +35,7 @@ interface HunkViewProps {
 
 export function HunkView({
   hunk,
+  filePath,
   isFocused,
   onFocus,
   onSetStatus,
@@ -36,6 +46,9 @@ export function HunkView({
   oldColumnWidth,
   onOldColumnWidthChange,
 }: HunkViewProps) {
+  const oldCode = hunk.lines.map((line) => line.content).join('\n')
+  const oldTokenLines = useHighlightedLines(oldCode, filePath)
+
   function handleResizeStart(event: ReactMouseEvent): void {
     event.preventDefault()
     const startX = event.clientX
@@ -84,10 +97,21 @@ export function HunkView({
         </Button>
       </Toolbar>
 
+      {hunk.summary !== null && (
+        <Summary>
+          <SummaryLabel>Summary</SummaryLabel>
+          <SummaryText>{hunk.summary}</SummaryText>
+        </Summary>
+      )}
+
       <Rows style={{ gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }}>
         <OldSide>
           {hunk.lines.map((line, index) => (
-            <Line key={index} line={line} />
+            <Line
+              key={index}
+              line={line}
+              tokens={oldTokenLines?.[index] ?? null}
+            />
           ))}
         </OldSide>
         <Resizer onMouseDown={handleResizeStart} />
@@ -96,6 +120,7 @@ export function HunkView({
             content={fileContent}
             error={fileContentError}
             loading={fileContentLoading}
+            filePath={filePath}
             hunk={hunk}
             editedContent={hunk.editedContent}
             onSetEditedContent={onSetEditedContent}
@@ -106,11 +131,18 @@ export function HunkView({
   )
 }
 
-function Line({ line }: { line: DiffLine }) {
+function Line({
+  line,
+  tokens,
+}: {
+  line: DiffLine
+  tokens: HighlightToken[] | null
+}) {
+  const mark = oldSideGutter(line)
   return (
     <LineRow $type={line.type}>
-      <LineNo>{line.oldLineNumber === null ? '-' : line.oldLineNumber}</LineNo>
-      <Content>{line.content}</Content>
+      <LineNo $kind={mark.kind}>{mark.label}</LineNo>
+      <HighlightedContent tokens={tokens} fallback={line.content} />
     </LineRow>
   )
 }
@@ -145,6 +177,33 @@ const Header = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+`
+
+const Summary = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing[1]};
+  padding: ${({ theme }) => theme.spacing[3]};
+  background: ${({ theme }) => theme.colors.tertiary};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+`
+
+const SummaryLabel = styled.span`
+  font-family: ${({ theme }) => theme.fonts.body};
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  color: ${({ theme }) => theme.colors.muted};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`
+
+const SummaryText = styled.p`
+  margin: 0;
+  font-family: ${({ theme }) => theme.fonts.body};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  line-height: 1.45;
+  color: ${({ theme }) => theme.colors.secondary};
+  white-space: pre-wrap;
 `
 
 // Old (before) and new (after) are no longer row-aligned: the new side now
@@ -182,6 +241,8 @@ const Resizer = styled.div`
 const NewSide = styled.div`
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 `
 
 const LineRow = styled.div<{ $type: DiffLine['type'] }>`
@@ -195,18 +256,15 @@ const LineRow = styled.div<{ $type: DiffLine['type'] }>`
   }};
 `
 
-const LineNo = styled.span`
+const LineNo = styled.span<{ $kind: 'add' | 'del' | 'context' }>`
   width: 36px;
   flex: none;
   text-align: right;
   padding-right: ${({ theme }) => theme.spacing[2]};
-  color: ${({ theme }) => theme.colors.muted};
+  color: ${({ $kind, theme }) => {
+    if ($kind === 'add') return theme.colors.success
+    if ($kind === 'del') return theme.colors.danger
+    return theme.colors.muted
+  }};
   user-select: none;
-`
-
-const Content = styled.span`
-  flex: 1;
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 `

@@ -1,0 +1,309 @@
+{
+  "session": {
+    "id": "demo",
+    "mode": "cli",
+    "scope": {},
+    "reviewComplete": false,
+    "files": [
+      {
+        "path": "src/ui/src/components/ui/Button.tsx",
+        "oldPath": null,
+        "status": "modified",
+        "binary": false,
+        "hunks": [
+          {
+            "id": "src/ui/src/components/ui/Button.tsx@@@@ -3,10 +3,13 @@",
+            "header": "@@ -3,10 +3,13 @@",
+            "oldStart": 3,
+            "oldLines": 10,
+            "newStart": 3,
+            "newLines": 13,
+            "status": "pending",
+            "summary": "Button only had a variant prop. Adding an optional size (sm/md, default md) so compact toolbar actions can share the same component without a one-off styled override.",
+            "comment": null,
+            "editedContent": null,
+            "questions": [],
+            "lines": [
+              {
+                "type": "context",
+                "content": "export type ButtonVariant = 'primary' | 'secondary' | 'ghost'",
+                "oldLineNumber": 3,
+                "newLineNumber": 3
+              },
+              {
+                "type": "add",
+                "content": "export type ButtonSize = 'sm' | 'md'",
+                "oldLineNumber": null,
+                "newLineNumber": 4
+              },
+              {
+                "type": "context",
+                "content": "",
+                "oldLineNumber": 4,
+                "newLineNumber": 5
+              },
+              {
+                "type": "context",
+                "content": "export function Button({",
+                "oldLineNumber": 5,
+                "newLineNumber": 6
+              },
+              {
+                "type": "context",
+                "content": "  variant = 'secondary',",
+                "oldLineNumber": 6,
+                "newLineNumber": 7
+              },
+              {
+                "type": "add",
+                "content": "  size = 'md',",
+                "oldLineNumber": null,
+                "newLineNumber": 8
+              },
+              {
+                "type": "context",
+                "content": "  children,",
+                "oldLineNumber": 7,
+                "newLineNumber": 9
+              },
+              {
+                "type": "context",
+                "content": "}: {",
+                "oldLineNumber": 8,
+                "newLineNumber": 10
+              },
+              {
+                "type": "context",
+                "content": "  variant?: ButtonVariant",
+                "oldLineNumber": 9,
+                "newLineNumber": 11
+              },
+              {
+                "type": "add",
+                "content": "  size?: ButtonSize",
+                "oldLineNumber": null,
+                "newLineNumber": 12
+              },
+              {
+                "type": "context",
+                "content": "  children: React.ReactNode",
+                "oldLineNumber": 10,
+                "newLineNumber": 13
+              },
+              {
+                "type": "context",
+                "content": "}) {",
+                "oldLineNumber": 11,
+                "newLineNumber": 14
+              },
+              {
+                "type": "context",
+                "content": "  return (",
+                "oldLineNumber": 12,
+                "newLineNumber": 15
+              }
+            ]
+          },
+          {
+            "id": "src/ui/src/components/ui/Button.tsx@@@@ -13,15 +16,20 @@",
+            "header": "@@ -13,15 +16,20 @@",
+            "oldStart": 13,
+            "oldLines": 15,
+            "newStart": 16,
+            "newLines": 20,
+            "status": "pending",
+            "summary": "Wiring size through to StyledButton and adding a hover brightness filter so primary/secondary/ghost all share the same interaction cue instead of per-variant hover colors.",
+            "comment": null,
+            "editedContent": null,
+            "questions": [],
+            "lines": [
+              {
+                "type": "del",
+                "content": "    <StyledButton $variant={variant}>",
+                "oldLineNumber": 13,
+                "newLineNumber": null
+              },
+              {
+                "type": "add",
+                "content": "    <StyledButton $variant={variant} $size={size}>",
+                "oldLineNumber": null,
+                "newLineNumber": 16
+              },
+              {
+                "type": "context",
+                "content": "      {children}",
+                "oldLineNumber": 14,
+                "newLineNumber": 17
+              },
+              {
+                "type": "context",
+                "content": "    </StyledButton>",
+                "oldLineNumber": 15,
+                "newLineNumber": 18
+              },
+              {
+                "type": "context",
+                "content": "  )",
+                "oldLineNumber": 16,
+                "newLineNumber": 19
+              },
+              {
+                "type": "context",
+                "content": "}",
+                "oldLineNumber": 17,
+                "newLineNumber": 20
+              },
+              {
+                "type": "context",
+                "content": "",
+                "oldLineNumber": 18,
+                "newLineNumber": 21
+              },
+              {
+                "type": "context",
+                "content": "const StyledButton = styled.button<{",
+                "oldLineNumber": 19,
+                "newLineNumber": 22
+              },
+              {
+                "type": "context",
+                "content": "  $variant: ButtonVariant",
+                "oldLineNumber": 20,
+                "newLineNumber": 23
+              },
+              {
+                "type": "add",
+                "content": "  $size: ButtonSize",
+                "oldLineNumber": null,
+                "newLineNumber": 24
+              },
+              {
+                "type": "context",
+                "content": "}>`",
+                "oldLineNumber": 21,
+                "newLineNumber": 25
+              },
+              {
+                "type": "context",
+                "content": "  display: inline-flex;",
+                "oldLineNumber": 22,
+                "newLineNumber": 26
+              },
+              {
+                "type": "context",
+                "content": "  align-items: center;",
+                "oldLineNumber": 23,
+                "newLineNumber": 27
+              },
+              {
+                "type": "context",
+                "content": "  justify-content: center;",
+                "oldLineNumber": 24,
+                "newLineNumber": 28
+              },
+              {
+                "type": "context",
+                "content": "  border-radius: 4px;",
+                "oldLineNumber": 25,
+                "newLineNumber": 29
+              },
+              {
+                "type": "context",
+                "content": "  cursor: pointer;",
+                "oldLineNumber": 26,
+                "newLineNumber": 30
+              },
+              {
+                "type": "add",
+                "content": "",
+                "oldLineNumber": null,
+                "newLineNumber": 31
+              },
+              {
+                "type": "add",
+                "content": "  &:hover:not(:disabled) {",
+                "oldLineNumber": null,
+                "newLineNumber": 32
+              },
+              {
+                "type": "add",
+                "content": "    filter: brightness(0.92);",
+                "oldLineNumber": null,
+                "newLineNumber": 33
+              },
+              {
+                "type": "add",
+                "content": "  }",
+                "oldLineNumber": null,
+                "newLineNumber": 34
+              },
+              {
+                "type": "context",
+                "content": "`",
+                "oldLineNumber": 27,
+                "newLineNumber": 35
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "path": "src/ui/src/lib/format.ts",
+        "oldPath": null,
+        "status": "added",
+        "binary": false,
+        "hunks": [
+          {
+            "id": "src/ui/src/lib/format.ts@@untracked",
+            "header": "@@ -0,0 +1,5 @@",
+            "oldStart": 0,
+            "oldLines": 0,
+            "newStart": 1,
+            "newLines": 5,
+            "status": "pending",
+            "summary": "New helper to truncate deep paths in the file list (first/…/last) so long repo-relative paths stay readable in the narrow sidebar without wrapping.",
+            "comment": null,
+            "editedContent": null,
+            "questions": [],
+            "lines": [
+              {
+                "type": "add",
+                "content": "export function formatPath(path: string): string {",
+                "oldLineNumber": null,
+                "newLineNumber": 1
+              },
+              {
+                "type": "add",
+                "content": "  const parts = path.split('/')",
+                "oldLineNumber": null,
+                "newLineNumber": 2
+              },
+              {
+                "type": "add",
+                "content": "  if (parts.length <= 2) return path",
+                "oldLineNumber": null,
+                "newLineNumber": 3
+              },
+              {
+                "type": "add",
+                "content": "  return `${parts[0]}/…/${parts[parts.length - 1]}`",
+                "oldLineNumber": null,
+                "newLineNumber": 4
+              },
+              {
+                "type": "add",
+                "content": "}",
+                "oldLineNumber": null,
+                "newLineNumber": 5
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "fileContents": {
+    "src/ui/src/components/ui/Button.tsx": "import styled from 'styled-components'\n\nexport type ButtonVariant = 'primary' | 'secondary' | 'ghost'\nexport type ButtonSize = 'sm' | 'md'\n\nexport function Button({\n  variant = 'secondary',\n  size = 'md',\n  children,\n}: {\n  variant?: ButtonVariant\n  size?: ButtonSize\n  children: React.ReactNode\n}) {\n  return (\n    <StyledButton $variant={variant} $size={size}>\n      {children}\n    </StyledButton>\n  )\n}\n\nconst StyledButton = styled.button<{\n  $variant: ButtonVariant\n  $size: ButtonSize\n}>`\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 4px;\n  cursor: pointer;\n\n  &:hover:not(:disabled) {\n    filter: brightness(0.92);\n  }\n`\n",
+    "src/ui/src/lib/format.ts": "export function formatPath(path: string): string {\n  const parts = path.split('/')\n  if (parts.length <= 2) return path\n  return `${parts[0]}/…/${parts[parts.length - 1]}`\n}\n"
+  }
+}

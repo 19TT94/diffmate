@@ -20,13 +20,17 @@ interface HunkLocation {
 }
 
 // Attaches fresh review state to freshly-parsed diff data; every hunk starts
-// pending with no comment/questions regardless of what a prior session did.
+// pending with no summary/comment/questions regardless of what a prior
+// session did.
 function toReviewFile(file: ParsedFile): ReviewFile {
   return {
     ...file,
     hunks: file.hunks.map((hunk): ReviewHunk => ({
       ...hunk,
       status: 'pending',
+      // TODO: accept optional per-hunk summaries from the caller (agent /
+      // CLI) instead of always starting null.
+      summary: null,
       comment: null,
       editedContent: null,
       questions: [],

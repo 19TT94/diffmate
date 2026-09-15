@@ -30,6 +30,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
       { type: 'context', content: 'same', oldLineNumber: 1, newLineNumber: 1 },
     ],
     status: 'pending',
+    summary: null,
     comment: null,
     editedContent: null,
     questions: [],

@@ -20,6 +20,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     newLines: 2,
     lines: [],
     status: 'pending',
+    summary: null,
     comment: null,
     editedContent: null,
     questions: [],
@@ -35,6 +36,7 @@ function renderColumn(
       content={null}
       error={null}
       loading={false}
+      filePath="a.ts"
       hunk={fixtureHunk()}
       editedContent={null}
       onSetEditedContent={() => {}}
@@ -74,6 +76,20 @@ describe('FullFileColumn', () => {
     })
     const range = document.getElementById('filerange-x1') as HTMLTextAreaElement
     expect(range.value).toBe('two\nthree')
+  })
+
+  it('keeps the editable hunk range as a plain textarea', async () => {
+    const { findByLabelText } = renderColumn({
+      content: 'const a = 1\nconst b = 2\nconst c = 3',
+      filePath: 'example.ts',
+      hunk: fixtureHunk({ id: 'x1', newStart: 2, newLines: 1 }),
+    })
+
+    const range = (await findByLabelText(
+      'Suggested rewrite for this hunk',
+    )) as HTMLTextAreaElement
+    expect(range.tagName).toBe('TEXTAREA')
+    expect(range.querySelector('[data-highlighted]')).toBeNull()
   })
 
   it('prefers already-saved editedContent over the original lines', () => {
@@ -136,6 +152,7 @@ describe('FullFileColumn', () => {
         content={'one\ntwo\nthree'}
         error={null}
         loading={false}
+        filePath="a.ts"
         hunk={fixtureHunk({ id: 'h2', newStart: 2, newLines: 1 })}
         editedContent={null}
         onSetEditedContent={() => {}}
@@ -153,19 +170,67 @@ describe('FullFileColumn', () => {
     expect(document.getElementById('filerange-x1')).toHaveValue('')
   })
 
-  it('shows a dash gutter line for every line in the editable range', () => {
+  it('shows + for added hunk lines and keeps file line numbers around them', () => {
     renderColumn({
       content: 'one\ntwo\nthree\nfour',
-      hunk: fixtureHunk({ id: 'x1', newStart: 2, newLines: 2 }),
+      hunk: fixtureHunk({
+        id: 'x1',
+        newStart: 2,
+        newLines: 2,
+        lines: [
+          {
+            type: 'add',
+            content: 'two',
+            oldLineNumber: null,
+            newLineNumber: 2,
+          },
+          {
+            type: 'add',
+            content: 'three',
+            oldLineNumber: null,
+            newLineNumber: 3,
+          },
+        ],
+      }),
     })
 
     const range = document.getElementById('filerange-x1')!
     const gutter = range.previousElementSibling!
-    const dashes = Array.from(gutter.children).map((el) => el.textContent)
-    expect(dashes).toEqual(['-', '-'])
-    // Context lines above/below keep their real file line numbers.
+    const marks = Array.from(gutter.children).map((el) => el.textContent)
+    expect(marks).toEqual(['+', '+'])
     expect(document.body.textContent).toMatch(/1.*one/s)
     expect(document.body.textContent).toMatch(/4.*four/s)
+  })
+
+  it('shows - in the editable gutter for a modified line', () => {
+    renderColumn({
+      content: 'one\ntwo\nthree',
+      hunk: fixtureHunk({
+        id: 'x1',
+        newStart: 2,
+        newLines: 1,
+        lines: [
+          {
+            type: 'del',
+            content: 'old two',
+            oldLineNumber: 2,
+            newLineNumber: null,
+          },
+          {
+            type: 'add',
+            content: 'two',
+            oldLineNumber: null,
+            newLineNumber: 2,
+          },
+        ],
+      }),
+    })
+
+    const range = document.getElementById('filerange-x1')!
+    const gutter = range.previousElementSibling!
+    expect(Array.from(gutter.children).map((el) => el.textContent)).toEqual([
+      '-',
+    ])
   })
 
   it('grows the dash gutter as edited lines are added', async () => {

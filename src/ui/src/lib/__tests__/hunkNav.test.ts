@@ -16,6 +16,7 @@ function hunk(id: string, status: Hunk['status']): Hunk {
     newLines: 1,
     lines: [],
     status,
+    summary: null,
     comment: null,
     editedContent: null,
     questions: [],
