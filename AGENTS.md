@@ -22,7 +22,7 @@ npm test            # node --test on src/engine, then vitest on src/ui
 npm run format       # prettier --check .
 
 # src/ui is its own Vite package (React + TypeScript + styled-components):
-npm run dev:ui        # vite dev server
+npm run dev:ui        # vite HMR with a canned review session (no git)
 npm run build:ui       # production build -> src/ui/dist
 npm run lint:ui         # eslint
 
@@ -37,13 +37,13 @@ Codex, Claude Code, etc.) working on this repo. `CLAUDE.md` just imports it.
 
 Per `docs/PLAN.md`:
 
-| Path | Role |
-| --- | --- |
-| `src/engine/` | Harness-agnostic core: git access, diff parsing, session state, HTTP server, output builder |
-| `src/cli/` | Phase 1 entry point — one-shot blocking CLI, works from any harness |
-| `src/mcp/` | Phase 2 entry point — Claude Code MCP server (stdio), live Q&A |
-| `src/install/` | `diffmate install` — writes `.mcp.json` + project-local slash command |
-| `src/ui/` | React + TypeScript + styled-components (Vite). Its own package.json, tsconfig, and dependency policy — see `.cursor/rules/diffmate-ui.mdc` |
+| Path           | Role                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/engine/`  | Harness-agnostic core: git access, diff parsing, session state, HTTP server, output builder                                                |
+| `src/cli/`     | Phase 1 entry point — one-shot blocking CLI, works from any harness                                                                        |
+| `src/mcp/`     | Phase 2 entry point — Claude Code MCP server (stdio), live Q&A                                                                             |
+| `src/install/` | `diffmate install` — writes `.mcp.json` + project-local slash command                                                                      |
+| `src/ui/`      | React + TypeScript + styled-components (Vite). Its own package.json, tsconfig, and dependency policy — see `.cursor/rules/diffmate-ui.mdc` |
 
 ## Conventions
 
@@ -82,10 +82,10 @@ Each skill exists once per tool since the two harnesses load skills from
 different locations and frontmatter dialects; keep a pair in sync if either
 changes.
 
-| Purpose | Cursor | Claude Code |
-| --- | --- | --- |
-| Review changes against diffmate conventions | [`code-review`](.cursor/skills/code-review/SKILL.md) | [`diffmate-code-review`](.claude/skills/diffmate-code-review/SKILL.md) |
-| Pre-commit checklist (typecheck, tests, format) | [`pr-prepare`](.cursor/skills/pr-prepare/SKILL.md) | [`pr-prepare`](.claude/skills/pr-prepare/SKILL.md) |
+| Purpose                                         | Cursor                                               | Claude Code                                                            |
+| ----------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| Review changes against diffmate conventions     | [`code-review`](.cursor/skills/code-review/SKILL.md) | [`diffmate-code-review`](.claude/skills/diffmate-code-review/SKILL.md) |
+| Pre-commit checklist (typecheck, tests, format) | [`pr-prepare`](.cursor/skills/pr-prepare/SKILL.md)   | [`pr-prepare`](.claude/skills/pr-prepare/SKILL.md)                     |
 
 The Claude Code review skill is named `diffmate-code-review`, not
 `code-review`, to avoid colliding with Claude Code's own built-in

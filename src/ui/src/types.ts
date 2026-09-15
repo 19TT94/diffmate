@@ -31,6 +31,10 @@ export interface Hunk {
   newLines: number
   lines: DiffLine[]
   status: HunkStatus
+  // Agent-authored rationale for this hunk (context + decision). Distinct
+  // from `comment` (reviewer feedback).
+  // TODO: wire generation/population from the agent or CLI session.
+  summary: string | null
   comment: string | null
   editedContent: string | null
   questions: Question[]

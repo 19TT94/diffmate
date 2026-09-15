@@ -30,16 +30,17 @@ export function FileList({
   return (
     <Nav aria-label="Changed files" $collapsed={collapsed}>
       <ToggleButton
+        variant="secondary"
         size="sm"
-        variant="ghost"
+        aria-expanded={!collapsed}
         title={collapsed ? 'Show changed files' : 'Hide changed files'}
         onClick={() => setCollapsed((value) => !value)}
       >
         {collapsed ? '›' : '‹'}
       </ToggleButton>
-      {collapsed
-        ? null
-        : files.map((file, index) => {
+      {collapsed ? null : (
+        <List>
+          {files.map((file, index) => {
             const { add, del } = fileLineStats(file)
             return (
               <Item
@@ -81,23 +82,49 @@ export function FileList({
               </Item>
             )
           })}
+        </List>
+      )}
     </Nav>
   )
 }
 
 // Style Overrides
 const Nav = styled.nav<{ $collapsed: boolean }>`
-  width: ${({ $collapsed }) => ($collapsed ? '32px' : '280px')};
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: ${({ $collapsed, theme }) =>
+    $collapsed ? theme.spacing[2] : '280px'};
   flex: none;
-  overflow-y: auto;
+  overflow: visible;
   border-right: 1px solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) => theme.colors.background};
 `
 
+const List = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: ${({ theme }) => theme.spacing[3]};
+`
+
 const ToggleButton = styled(Button)`
-  display: flex;
-  width: 100%;
-  justify-content: center;
+  position: absolute;
+  top: ${({ theme }) => theme.spacing[3]};
+  right: 0;
+  z-index: 1;
+  width: ${({ theme }) => theme.spacing[4]};
+  height: ${({ theme }) => theme.spacing[4]};
+  padding: 0;
+  line-height: 1;
+  border-radius: ${({ theme }) => theme.radii.full};
+  transform: translateX(50%);
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.92);
+    background-color: ${({ theme }) => theme.colors.tertiary};
+  }
 `
 
 const Stat = styled.span`

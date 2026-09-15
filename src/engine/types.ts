@@ -45,6 +45,12 @@ export interface Question {
 // approved/rejected hunks is representable without a separate diffing pass.
 export interface ReviewHunk extends Hunk {
   status: HunkStatus
+  // Agent-authored rationale for this hunk: relevant context and the
+  // decision that led to the change. Distinct from `comment`, which is
+  // reviewer feedback for the agent.
+  // TODO: populate when the agent (or CLI) supplies per-hunk summaries —
+  // currently always null at session creation.
+  summary: string | null
   comment: string | null
   // A user-proposed rewrite of the hunk's new-side code, attached as review
   // feedback for the agent to read and apply itself — never written to

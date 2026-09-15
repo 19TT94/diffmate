@@ -29,7 +29,7 @@ function fixtureFiles(): ParsedFile[] {
   ]
 }
 
-test('wraps parsed files with pending status and no comment/questions', () => {
+test('wraps parsed files with pending status and no summary/comment/questions', () => {
   const session = new ReviewSession('cli', {}, fixtureFiles())
 
   assert.equal(session.mode, 'cli')
@@ -38,6 +38,7 @@ test('wraps parsed files with pending status and no comment/questions', () => {
 
   const [hunk] = session.files[0]!.hunks
   assert.equal(hunk!.status, 'pending')
+  assert.equal(hunk!.summary, null)
   assert.equal(hunk!.comment, null)
   assert.equal(hunk!.editedContent, null)
   assert.deepEqual(hunk!.questions, [])

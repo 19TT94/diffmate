@@ -55,6 +55,7 @@ export function HunkStepper({
       <HunkView
         key={hunk.id}
         hunk={hunk}
+        filePath={file.path}
         isFocused={false}
         onFocus={() => {}}
         onSetStatus={(status) => onSetStatus(hunk.id, status)}

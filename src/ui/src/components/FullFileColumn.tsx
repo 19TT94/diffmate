@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
+// Hooks
+import { useHighlightedLines } from '../hooks/useHighlightedLines'
+
+// Components
+import { HighlightedContent } from './HighlightedContent'
+
+// Utils
+import { editableGutters, type GutterKind } from '../lib/gutter'
+
 // Types
 import type { Hunk } from '../types'
 
@@ -8,6 +17,7 @@ interface FullFileColumnProps {
   content: string | null
   error: string | null
   loading: boolean
+  filePath: string
   hunk: Hunk
   editedContent: string | null
   onSetEditedContent: (editedContent: string | null) => void
@@ -20,6 +30,7 @@ export function FullFileColumn({
   content,
   error,
   loading,
+  filePath,
   hunk,
   editedContent,
   onSetEditedContent,
@@ -35,6 +46,7 @@ export function FullFileColumn({
       // component to key this correctly.
       key={hunk.id}
       content={content}
+      filePath={filePath}
       hunk={hunk}
       editedContent={editedContent}
       onSetEditedContent={onSetEditedContent}
@@ -44,6 +56,7 @@ export function FullFileColumn({
 
 interface FileBodyProps {
   content: string
+  filePath: string
   hunk: Hunk
   editedContent: string | null
   onSetEditedContent: (editedContent: string | null) => void
@@ -51,6 +64,7 @@ interface FileBodyProps {
 
 function FileBody({
   content,
+  filePath,
   hunk,
   editedContent,
   onSetEditedContent,
@@ -62,6 +76,7 @@ function FileBody({
   const rangeEnd = rangeStart + hunk.newLines
   const originalRange = lines.slice(rangeStart, rangeEnd).join('\n')
   const [draft, setDraft] = useState(editedContent ?? originalRange)
+  const tokenLines = useHighlightedLines(content, filePath)
 
   useEffect(() => {
     document
@@ -75,23 +90,26 @@ function FileBody({
     if (next !== editedContent) onSetEditedContent(next)
   }
 
-  // Every line being edited is, by definition, a modification — it never
-  // has a stable line number of its own, so the gutter shows a dash per
-  // line here, same as an added line does in the old (left) column.
   const draftLineCount = Math.max(draft.split('\n').length, 1)
+  const gutters = editableGutters(hunk, draftLineCount)
 
   return (
     <Scroller>
       {lines.slice(0, rangeStart).map((line, index) => (
         <Row key={index}>
-          <LineNo>{index + 1}</LineNo>
-          <Content>{line}</Content>
+          <LineNo $kind="context">{index + 1}</LineNo>
+          <HighlightedContent
+            tokens={tokenLines?.[index] ?? null}
+            fallback={line}
+          />
         </Row>
       ))}
       <EditRow>
         <EditGutter>
-          {Array.from({ length: draftLineCount }, (_, index) => (
-            <span key={index}>-</span>
+          {gutters.map((mark, index) => (
+            <GutterMark key={index} $kind={mark.kind}>
+              {mark.label}
+            </GutterMark>
           ))}
         </EditGutter>
         <EditableRange
@@ -105,8 +123,11 @@ function FileBody({
       </EditRow>
       {lines.slice(rangeEnd).map((line, index) => (
         <Row key={rangeEnd + index}>
-          <LineNo>{rangeEnd + index + 1}</LineNo>
-          <Content>{line}</Content>
+          <LineNo $kind="context">{rangeEnd + index + 1}</LineNo>
+          <HighlightedContent
+            tokens={tokenLines?.[rangeEnd + index] ?? null}
+            fallback={line}
+          />
         </Row>
       ))}
     </Scroller>
@@ -115,7 +136,10 @@ function FileBody({
 
 // Style Overrides
 const Scroller = styled.div`
+  flex: 1;
   height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   font-family: ${({ theme }) => theme.fonts.mono};
   font-size: ${({ theme }) => theme.fontSizes.xs};
@@ -126,20 +150,17 @@ const Row = styled.div`
   align-items: flex-start;
 `
 
-const LineNo = styled.span`
+const LineNo = styled.span<{ $kind: GutterKind }>`
   width: 44px;
   flex: none;
   text-align: right;
   padding-right: ${({ theme }) => theme.spacing[2]};
-  color: ${({ theme }) => theme.colors.muted};
+  color: ${({ $kind, theme }) => {
+    if ($kind === 'add') return theme.colors.success
+    if ($kind === 'del') return theme.colors.danger
+    return theme.colors.muted
+  }};
   user-select: none;
-`
-
-const Content = styled.span`
-  flex: 1;
-  min-width: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 `
 
 const EditRow = styled.div`
@@ -154,11 +175,18 @@ const EditGutter = styled.div`
   flex-direction: column;
   text-align: right;
   padding-right: ${({ theme }) => theme.spacing[2]};
-  color: ${({ theme }) => theme.colors.muted};
   user-select: none;
   line-height: 1.4;
   background: ${({ theme }) =>
     `color-mix(in srgb, ${theme.colors.primary} 12%, ${theme.colors.tertiary})`};
+`
+
+const GutterMark = styled.span<{ $kind: GutterKind }>`
+  color: ${({ $kind, theme }) => {
+    if ($kind === 'add') return theme.colors.success
+    if ($kind === 'del') return theme.colors.danger
+    return theme.colors.muted
+  }};
 `
 
 const EditableRange = styled.textarea`
@@ -166,6 +194,7 @@ const EditableRange = styled.textarea`
   flex: 1;
   min-width: 0;
   resize: none;
+  overflow: hidden;
   border: none;
   outline: none;
   padding: 0;
@@ -179,6 +208,9 @@ const EditableRange = styled.textarea`
 `
 
 const Placeholder = styled.div`
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   padding: ${({ theme }) => theme.spacing[4]};
   color: ${({ theme }) => theme.colors.muted};
   font-size: ${({ theme }) => theme.fontSizes.sm};

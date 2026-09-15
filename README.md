@@ -51,11 +51,16 @@ npm run format        # prettier --check .
 `src/ui/`'s own scripts are reachable from the root via:
 
 ```bash
-npm run dev:ui        # vite dev server with HMR (UI only, no live data)
+npm run dev:ui        # vite HMR with a canned review session (no git)
 npm run build:ui       # production build -> src/ui/dist
 npm run lint:ui         # eslint
 npm run test:ui          # vitest run
 ```
+
+`dev:ui` serves a fixture from `src/ui/dev/demo-session.json` over the same
+REST/SSE `/api` contract as the real engine — no git repo needed. Restart
+Vite after editing that JSON. Use **Try it (demo)** below for a live
+working-tree diff.
 
 ## Try it (demo)
 

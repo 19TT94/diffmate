@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/react'
+import { fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +23,7 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
       { type: 'context', content: 'same', oldLineNumber: 1, newLineNumber: 1 },
     ],
     status: 'pending',
+    summary: null,
     comment: null,
     editedContent: null,
     questions: [],
@@ -36,6 +37,7 @@ function renderHunkView(
   return renderWithTheme(
     <HunkView
       hunk={fixtureHunk()}
+      filePath="a.ts"
       isFocused={false}
       onFocus={() => {}}
       onSetStatus={() => {}}
@@ -68,7 +70,7 @@ describe('HunkView', () => {
     expect(onSetStatus).toHaveBeenCalledWith('approved')
   })
 
-  it('renders every hunk line in the left column, with a dash for lines with no old line number', () => {
+  it('renders + in the gutter for additions and - for deletions', () => {
     renderHunkView({
       hunk: fixtureHunk({
         lines: [
@@ -97,13 +99,12 @@ describe('HunkView', () => {
     const spans = Array.from(document.querySelectorAll('span')).map(
       (el) => el.textContent,
     )
-    // All three lines appear in the gutter-style left column, like a
-    // unified diff — an added line just gets a dash instead of an old
-    // line number.
     expect(spans).toContain('removed')
     expect(spans).toContain('added')
     expect(spans).toContain('kept')
+    expect(spans).toContain('+')
     expect(spans).toContain('-')
+    expect(spans).toContain('2')
   })
 
   it('passes fileContent through to the full-file column', () => {
@@ -111,6 +112,49 @@ describe('HunkView', () => {
 
     expect(document.body.textContent).toContain('one')
     expect(document.body.textContent).toContain('three')
+  })
+
+  it('renders the hunk summary when present', () => {
+    renderHunkView({
+      hunk: fixtureHunk({
+        summary:
+          'Added size prop so toolbar buttons can stay compact without a one-off override.',
+      }),
+    })
+
+    expect(document.body.textContent).toContain('Summary')
+    expect(document.body.textContent).toContain(
+      'Added size prop so toolbar buttons can stay compact without a one-off override.',
+    )
+  })
+
+  it('hides the summary block when summary is null', () => {
+    renderHunkView({ hunk: fixtureHunk({ summary: null }) })
+
+    expect(document.body.textContent).not.toContain('Summary')
+  })
+
+  it('highlights read-only old-side lines for known languages', async () => {
+    renderHunkView({
+      filePath: 'example.ts',
+      hunk: fixtureHunk({
+        lines: [
+          {
+            type: 'add',
+            content: 'const answer = 42',
+            oldLineNumber: null,
+            newLineNumber: 1,
+          },
+        ],
+      }),
+    })
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-highlighted]')).not.toBeNull()
+    })
+    expect(document.querySelector('[data-highlighted]')!.textContent).toContain(
+      'const answer = 42',
+    )
   })
 
   it('resizes the old column by dragging the divider', () => {
