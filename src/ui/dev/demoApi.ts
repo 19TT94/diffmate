@@ -10,6 +10,7 @@ const VALID_STATUSES = ['pending', 'approved', 'rejected'] as const
 const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
+const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
 
 interface DemoHunk {
   id: string
@@ -20,6 +21,7 @@ interface DemoHunk {
 
 interface DemoFile {
   path: string
+  notes: string | null
   hunks: DemoHunk[]
 }
 
@@ -158,6 +160,20 @@ async function handle(
       hunkId,
       editedContent: hunk.editedContent,
     })
+    sendJson(res, 200, { ok: true })
+    return
+  }
+
+  const notesMatch = pathname.match(FILE_NOTES_RE)
+  if (method === 'POST' && notesMatch) {
+    const path = decodeURIComponent(notesMatch[1]!)
+    const body = (await readJsonBody(req)) as { notes?: string | null }
+    const file = session.files.find((candidate) => candidate.path === path)
+    if (!file) {
+      sendJson(res, 404, { error: `Unknown file: ${path}` })
+      return
+    }
+    file.notes = body.notes ?? null
     sendJson(res, 200, { ok: true })
     return
   }

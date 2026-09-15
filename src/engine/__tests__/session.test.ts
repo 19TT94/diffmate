@@ -44,6 +44,22 @@ test('wraps parsed files with pending status and no summary/comment/questions', 
   assert.deepEqual(hunk!.questions, [])
 })
 
+test('setFileNotes stores out-of-hunk edits without an event', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  const events: unknown[] = []
+  session.bus.on('hunk_updated', (payload) => events.push(payload))
+
+  session.setFileNotes('a.txt', '@@ -1,1 +1,1 @@\n-line one\n+line uno')
+
+  assert.equal(session.files[0]!.notes, '@@ -1,1 +1,1 @@\n-line one\n+line uno')
+  assert.deepEqual(events, [])
+})
+
+test('setFileNotes throws for an unknown file', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  assert.throws(() => session.setFileNotes('nope.txt', 'notes'))
+})
+
 test('setHunkStatus updates status and emits hunk_updated', () => {
   const session = new ReviewSession('cli', {}, fixtureFiles())
   const events: unknown[] = []

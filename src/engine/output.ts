@@ -35,6 +35,14 @@ export interface ReviewEntry {
   diff: string
 }
 
+// Reviewer edits that fell outside every hunk's new-side range, keyed by
+// file. The per-hunk `editedContent` contract can't carry them, so they ride
+// here as a formatted block the agent can read and apply itself.
+export interface FileNote {
+  filePath: string
+  notes: string
+}
+
 export interface Report {
   counts: Counts
   // Phase-1 rules partition hunks into these three sections. Approved
@@ -43,6 +51,8 @@ export interface Report {
   approvedWithNotes: ReviewEntry[]
   rejected: ReviewEntry[]
   comments: ReviewEntry[]
+  // Files carrying reviewer edits outside any reviewed hunk.
+  fileNotes: FileNote[]
 }
 
 export function buildReport(session: ReviewSession): Report {
@@ -76,11 +86,19 @@ export function buildReport(session: ReviewSession): Report {
   }
 
   const total = approved + rejectedCount + pending
+
+  const fileNotes: FileNote[] = []
+  for (const file of session.files) {
+    if (file.notes !== null)
+      fileNotes.push({ filePath: file.path, notes: file.notes })
+  }
+
   return {
     counts: { approved, rejected: rejectedCount, commented, pending, total },
     approvedWithNotes,
     rejected,
     comments,
+    fileNotes,
   }
 }
 
@@ -149,6 +167,13 @@ export function renderMarkdown(report: Report): string {
   renderSection(parts, 'Approved (with notes)', report.approvedWithNotes)
   renderSection(parts, 'Rejected', report.rejected)
   renderSection(parts, 'Comments', report.comments)
+
+  if (report.fileNotes.length > 0) {
+    parts.push('', '## Additional file edits (outside reviewed hunks)', '')
+    for (const note of report.fileNotes) {
+      parts.push(`### ${note.filePath}`, '', '```diff', note.notes, '```', '')
+    }
+  }
 
   return `${parts.join('\n').trimEnd()}\n`
 }

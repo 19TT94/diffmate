@@ -25,6 +25,7 @@ interface HunkLocation {
 function toReviewFile(file: ParsedFile): ReviewFile {
   return {
     ...file,
+    notes: null,
     hunks: file.hunks.map((hunk): ReviewHunk => ({
       ...hunk,
       status: 'pending',
@@ -96,6 +97,17 @@ export class ReviewSession {
     const { hunk } = this.requireHunk(hunkId)
     hunk.editedContent = editedContent
     this.bus.emit('hunk_updated', { hunkId, editedContent })
+  }
+
+  // Out-of-hunk reviewer edits for a file. No bus emit: this is written
+  // during the submit flush, and the report is built from session state
+  // after the flush's POSTs complete.
+  setFileNotes(filePath: string, notes: string | null): void {
+    const file = this.files.find((candidate) => candidate.path === filePath)
+    if (!file) {
+      throw new Error(`Unknown file: ${filePath}`)
+    }
+    file.notes = notes
   }
 
   askQuestion(hunkId: string, text: string): Question {

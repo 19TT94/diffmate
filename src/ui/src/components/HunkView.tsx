@@ -1,20 +1,13 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import styled from 'styled-components'
 
-// Hooks
-import { useHighlightedLines } from '../hooks/useHighlightedLines'
-
 // Components
 import { Button } from './ui/Button'
-import { FullFileColumn } from './FullFileColumn'
-import { HighlightedContent } from './HighlightedContent'
-
-// Utils
-import { oldSideGutter } from '../lib/gutter'
+import { DiffSide } from './DiffSide'
+import { FileEditor } from './FileEditor'
 
 // Types
-import type { HighlightToken } from '../lib/highlight'
-import type { DiffLine, Hunk, HunkStatus } from '../types'
+import type { Hunk, HunkStatus } from '../types'
 
 const MIN_OLD_WIDTH = 120
 const MAX_OLD_WIDTH = 600
@@ -25,7 +18,7 @@ interface HunkViewProps {
   isFocused: boolean
   onFocus: () => void
   onSetStatus: (status: HunkStatus) => void
-  onSetEditedContent: (editedContent: string | null) => void
+  onFileChange: (content: string) => void
   fileContent: string | null
   fileContentError: string | null
   fileContentLoading: boolean
@@ -39,16 +32,13 @@ export function HunkView({
   isFocused,
   onFocus,
   onSetStatus,
-  onSetEditedContent,
+  onFileChange,
   fileContent,
   fileContentError,
   fileContentLoading,
   oldColumnWidth,
   onOldColumnWidthChange,
 }: HunkViewProps) {
-  const oldCode = hunk.lines.map((line) => line.content).join('\n')
-  const oldTokenLines = useHighlightedLines(oldCode, filePath)
-
   function handleResizeStart(event: ReactMouseEvent): void {
     event.preventDefault()
     const startX = event.clientX
@@ -106,44 +96,27 @@ export function HunkView({
 
       <Rows style={{ gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }}>
         <OldSide>
-          {hunk.lines.map((line, index) => (
-            <Line
-              key={index}
-              line={line}
-              tokens={oldTokenLines?.[index] ?? null}
-            />
-          ))}
+          <DiffSide hunk={hunk} filePath={filePath} />
         </OldSide>
         <Resizer onMouseDown={handleResizeStart} />
         <NewSide>
-          <FullFileColumn
-            content={fileContent}
-            error={fileContentError}
-            loading={fileContentLoading}
-            filePath={filePath}
-            hunk={hunk}
-            editedContent={hunk.editedContent}
-            onSetEditedContent={onSetEditedContent}
-          />
+          {fileContentLoading ? (
+            <Placeholder>Loading file…</Placeholder>
+          ) : fileContentError ? (
+            <Placeholder>{fileContentError}</Placeholder>
+          ) : fileContent === null ? (
+            <Placeholder>No content available.</Placeholder>
+          ) : (
+            <FileEditor
+              content={fileContent}
+              filePath={filePath}
+              hunk={hunk}
+              onDocChanged={onFileChange}
+            />
+          )}
         </NewSide>
       </Rows>
     </Container>
-  )
-}
-
-function Line({
-  line,
-  tokens,
-}: {
-  line: DiffLine
-  tokens: HighlightToken[] | null
-}) {
-  const mark = oldSideGutter(line)
-  return (
-    <LineRow $type={line.type}>
-      <LineNo $kind={mark.kind}>{mark.label}</LineNo>
-      <HighlightedContent tokens={tokens} fallback={line.content} />
-    </LineRow>
   )
 }
 
@@ -206,27 +179,19 @@ const SummaryText = styled.p`
   white-space: pre-wrap;
 `
 
-// Old (before) and new (after) are no longer row-aligned: the new side now
-// shows the whole file, not just this hunk's lines, so a narrow, resizable
-// reference strip on the left and a wide, prioritized pane on the right
-// replace the old equal-width paired columns. Column width is a genuinely
-// dynamic runtime value (live drag position), so it's set via inline style
-// rather than a styled-components prop. grid-template-rows uses minmax(0,
-// 1fr) rather than 1fr alone so the row can actually shrink to the
-// container's height instead of growing to fit content — the grid
-// equivalent of flexbox's min-height:0 gotcha.
+// The old side is a narrow, resizable reference strip; the new side is the
+// whole (post-change) file. grid-template-rows uses minmax(0, 1fr) so the
+// row can actually shrink instead of growing to fit content.
 const Rows = styled.div`
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
-  font-family: ${({ theme }) => theme.fonts.mono};
-  font-size: ${({ theme }) => theme.fontSizes.xs};
 `
 
 const OldSide = styled.div`
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 `
 
 const Resizer = styled.div`
@@ -245,26 +210,11 @@ const NewSide = styled.div`
   flex-direction: column;
 `
 
-const LineRow = styled.div<{ $type: DiffLine['type'] }>`
-  display: flex;
-  align-items: flex-start;
-  padding: 0 ${({ theme }) => theme.spacing[2]};
-  background: ${({ $type, theme }) => {
-    if ($type === 'add') return theme.colors.diffAddBg
-    if ($type === 'del') return theme.colors.diffDelBg
-    return 'transparent'
-  }};
-`
-
-const LineNo = styled.span<{ $kind: 'add' | 'del' | 'context' }>`
-  width: 36px;
-  flex: none;
-  text-align: right;
-  padding-right: ${({ theme }) => theme.spacing[2]};
-  color: ${({ $kind, theme }) => {
-    if ($kind === 'add') return theme.colors.success
-    if ($kind === 'del') return theme.colors.danger
-    return theme.colors.muted
-  }};
-  user-select: none;
+const Placeholder = styled.div`
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  padding: ${({ theme }) => theme.spacing[4]};
+  color: ${({ theme }) => theme.colors.muted};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
 `

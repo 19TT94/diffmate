@@ -22,7 +22,6 @@ const App = () => {
     focusedHunkId,
     setFocusedHunkId,
     setHunkStatus,
-    setHunkEditedContent,
     submitReview,
   } = useReviewSession()
 
@@ -114,7 +113,6 @@ const App = () => {
                   : null
               }
               onSetStatus={handleSetStatus}
-              onSetEditedContent={setHunkEditedContent}
             />
           ) : (
             <EmptyState>
