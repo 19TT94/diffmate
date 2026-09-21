@@ -261,8 +261,9 @@ Installation (`diffmate install`):
   start in parallel against a mock. Largest single chunk of work. **Done**,
   built with `npm run build:ui` (output: `src/ui/dist`).
 - **M6** `output.ts` (feedback builder per phase-1 rules) — depends on M3.
+  **Done.**
 - **M7** `cli/index.ts` (wire it all together) — **phase 1 shippable here,
-  recommend publishing v0.1**.
+  recommend publishing v0.1**. **Done.**
 - **M8** MCP server + four tools, reusing the engine unchanged (should
   require no rework if M3's bus was built generically) — depends on M3/M4.
 - **M9** UI additions for Q&A (ask box, threaded display, SSE client, mode

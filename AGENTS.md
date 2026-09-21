@@ -9,16 +9,18 @@ browser UI (`src/ui/`, its own package).
 ## Status
 
 In progress. The harness-agnostic engine (git access, diff parsing,
-`ReviewSession` state/event model, REST/SSE HTTP server) and the React
-review UI are built and tested. The CLI entry point, structured output
-builder, and the Claude Code MCP server (phase 2) are still to come. See
-[`docs/PLAN.md`](docs/PLAN.md) for the full architecture, package layout,
-and build order.
+`ReviewSession` state/event model, REST/SSE HTTP server, structured
+output builder), the React review UI, and the phase-1 one-shot CLI
+(`diffmate` / `diffmate review`, `npm run build` -> `dist/`) are built
+and tested. The Claude Code MCP server and `diffmate install` (phase 2)
+are still to come. See [`docs/PLAN.md`](docs/PLAN.md) for the full
+architecture, package layout, and build order.
 
 ```bash
 npm install
+npm run build        # npm run build:ui, then esbuild -> dist/cli/index.js
 npm run typecheck   # tsc --noEmit (engine/cli/mcp/install; src/ui excluded)
-npm test            # node --test on src/engine, then vitest on src/ui
+npm test            # node --test on src/engine and src/cli, then vitest on src/ui
 npm run format       # prettier --check .
 
 # src/ui is its own Vite package (React + TypeScript + styled-components):
@@ -26,8 +28,8 @@ npm run dev:ui        # vite HMR with a canned review session (no git)
 npm run build:ui       # production build -> src/ui/dist
 npm run lint:ui         # eslint
 
-# Not yet available — land with milestone M7 (see docs/PLAN.md):
-npm run build       # esbuild -> dist/
+# The full CLI (serves src/ui/dist via a local HTTP server):
+npm link && /path/to/scratch-repo/diffmate review --staged
 ```
 
 This file is the **tool-agnostic** entrypoint for coding agents (Cursor,
