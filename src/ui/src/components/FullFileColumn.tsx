@@ -9,6 +9,7 @@ import { HighlightedContent } from './HighlightedContent'
 
 // Utils
 import { editableGutters, type GutterKind } from '../lib/gutter'
+import { HIGHLIGHT_EDITOR_BG, HIGHLIGHT_EDITOR_FG } from '../lib/highlight'
 
 // Types
 import type { Hunk } from '../types'
@@ -143,6 +144,8 @@ const Scroller = styled.div`
   overflow-y: auto;
   font-family: ${({ theme }) => theme.fonts.mono};
   font-size: ${({ theme }) => theme.fontSizes.xs};
+  background: ${HIGHLIGHT_EDITOR_BG};
+  color: ${HIGHLIGHT_EDITOR_FG};
 `
 
 const Row = styled.div`
@@ -178,7 +181,7 @@ const EditGutter = styled.div`
   user-select: none;
   line-height: 1.4;
   background: ${({ theme }) =>
-    `color-mix(in srgb, ${theme.colors.primary} 12%, ${theme.colors.tertiary})`};
+    `color-mix(in srgb, ${theme.colors.primary} 24%, ${HIGHLIGHT_EDITOR_BG})`};
 `
 
 const GutterMark = styled.span<{ $kind: GutterKind }>`
@@ -203,8 +206,10 @@ const EditableRange = styled.textarea`
   font-size: ${({ theme }) => theme.fontSizes.xs};
   line-height: 1.4;
   overflow-wrap: anywhere;
+  color: ${HIGHLIGHT_EDITOR_FG};
+  caret-color: ${HIGHLIGHT_EDITOR_FG};
   background: ${({ theme }) =>
-    `color-mix(in srgb, ${theme.colors.primary} 12%, ${theme.colors.tertiary})`};
+    `color-mix(in srgb, ${theme.colors.primary} 24%, ${HIGHLIGHT_EDITOR_BG})`};
 `
 
 const Placeholder = styled.div`
@@ -212,6 +217,7 @@ const Placeholder = styled.div`
   height: 100%;
   min-height: 0;
   padding: ${({ theme }) => theme.spacing[4]};
+  background: ${HIGHLIGHT_EDITOR_BG};
   color: ${({ theme }) => theme.colors.muted};
   font-size: ${({ theme }) => theme.fontSizes.sm};
 `
