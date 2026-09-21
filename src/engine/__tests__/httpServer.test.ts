@@ -156,6 +156,20 @@ test('POST /api/hunks/:id/edit updates the edited content', async () => {
   })
 })
 
+test('POST /api/files/:path/notes stores out-of-hunk edits', async () => {
+  await withServer(async (_server, session, apiUrl) => {
+    const res = await fetch(apiUrl('/api/files/a.txt/notes'), {
+      method: 'POST',
+      body: JSON.stringify({ notes: '@@ -1,1 +1,1 @@\n-line one\n+line uno' }),
+    })
+    assert.equal(res.status, 200)
+    assert.equal(
+      session.files[0]!.notes,
+      '@@ -1,1 +1,1 @@\n-line one\n+line uno',
+    )
+  })
+})
+
 test('GET /api/files/content returns the current file content', async () => {
   await withServer(async (_server, _session, apiUrl) => {
     const res = await fetch(apiUrl('/api/files/content?path=a.txt'))

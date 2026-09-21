@@ -65,6 +65,11 @@ export interface ReviewFile {
   status: FileStatus
   binary: boolean
   hunks: ReviewHunk[]
+  // Edits the reviewer made outside any hunk's new-side range, formatted as
+  // a small diff block. Per-hunk rewrites live on `editedContent`; this is
+  // the overflow the per-hunk contract can't carry. Written by the UI during
+  // submit flush, surfaced in the structured output.
+  notes: string | null
 }
 
 export type SessionMode = 'cli' | 'mcp'

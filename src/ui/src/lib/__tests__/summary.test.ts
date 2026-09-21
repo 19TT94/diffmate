@@ -30,6 +30,7 @@ function file(overrides: Partial<ReviewFile> = {}): ReviewFile {
     status: 'modified',
     binary: false,
     hunks: [],
+    notes: null,
     ...overrides,
   }
 }

@@ -35,6 +35,7 @@ function fixtureFile(overrides: Partial<ReviewFile> = {}): ReviewFile {
     status: 'modified',
     binary: false,
     hunks: [fixtureHunk()],
+    notes: null,
     ...overrides,
   }
 }

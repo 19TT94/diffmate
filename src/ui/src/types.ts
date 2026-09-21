@@ -49,6 +49,9 @@ export interface ReviewFile {
   status: FileStatus
   binary: boolean
   hunks: Hunk[]
+  // Reviewer edits outside any hunk's new-side range, formatted as a diff
+  // block. Mirrors engine/types.ts's ReviewFile.notes.
+  notes: string | null
 }
 
 export type SessionMode = 'cli' | 'mcp'

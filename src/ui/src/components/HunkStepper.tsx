@@ -21,7 +21,7 @@ interface HunkStepperProps {
   onPrev: (() => void) | null
   onNext: (() => void) | null
   onSetStatus: (hunkId: string, status: HunkStatus) => void
-  onSetEditedContent: (hunkId: string, editedContent: string | null) => void
+  onFileChange?: (content: string) => void
 }
 
 export function HunkStepper({
@@ -32,7 +32,7 @@ export function HunkStepper({
   onPrev,
   onNext,
   onSetStatus,
-  onSetEditedContent,
+  onFileChange,
 }: HunkStepperProps) {
   const {
     content: fileContent,
@@ -40,7 +40,8 @@ export function HunkStepper({
     loading: fileContentLoading,
   } = useFileContent(file.path)
   // Lives here, not in HunkView, so a resize sticks as you step between
-  // hunks — HunkView is keyed by hunk.id and remounts on every step.
+  // hunks and files — HunkView is keyed by file.path and remounts on file
+  // changes.
   const [oldColumnWidth, setOldColumnWidth] = useState(DEFAULT_OLD_COLUMN_WIDTH)
 
   return (
@@ -52,16 +53,16 @@ export function HunkStepper({
         </Progress>
       </Header>
 
+      {/* Keyed by file, not hunk: the whole-file editor must survive hunk
+          stepping. The old-side strip remounts per hunk on its own. */}
       <HunkView
-        key={hunk.id}
+        key={file.path}
         hunk={hunk}
         filePath={file.path}
         isFocused={false}
         onFocus={() => {}}
         onSetStatus={(status) => onSetStatus(hunk.id, status)}
-        onSetEditedContent={(editedContent) =>
-          onSetEditedContent(hunk.id, editedContent)
-        }
+        onFileChange={onFileChange ?? (() => {})}
         fileContent={fileContent}
         fileContentError={fileContentError}
         fileContentLoading={fileContentLoading}
