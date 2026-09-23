@@ -47,6 +47,8 @@ function renderHunkView(
       fileContentLoading={false}
       oldColumnWidth={220}
       onOldColumnWidthChange={() => {}}
+      layout="stacked"
+      onLayoutChange={() => {}}
       {...overrides}
     />,
   )
@@ -66,7 +68,7 @@ describe('HunkView', () => {
     expect(onSetStatus).toHaveBeenCalledWith('approved')
   })
 
-  it('renders the old-side strip with add/del gutter marks', async () => {
+  it('renders the stacked top panel with removed rows left and added rows right', async () => {
     renderHunkView({
       hunk: fixtureHunk({
         lines: [
@@ -93,10 +95,13 @@ describe('HunkView', () => {
     })
 
     await waitFor(() => {
-      expect(document.querySelector('.cm-content')).not.toBeNull()
+      expect(document.querySelectorAll('.cm-content').length).toBe(2)
     })
-    expect(document.body.textContent).toContain('removed')
-    expect(document.body.textContent).toContain('added')
+    const [oldColumn, newColumn] = document.querySelectorAll('.cm-content')
+    expect(oldColumn!.textContent).toContain('removed')
+    expect(oldColumn!.textContent).not.toContain('added')
+    expect(newColumn!.textContent).toContain('added')
+    expect(newColumn!.textContent).not.toContain('removed')
     expect(document.querySelector('.cm-diff-gutter-add')).not.toBeNull()
     expect(document.querySelector('.cm-diff-gutter-del')).not.toBeNull()
   })
@@ -156,6 +161,7 @@ describe('HunkView', () => {
   it('resizes the old column by dragging the divider', () => {
     const onOldColumnWidthChange = vi.fn()
     const { container } = renderHunkView({
+      layout: 'side-by-side',
       oldColumnWidth: 220,
       onOldColumnWidthChange,
     })
@@ -167,5 +173,31 @@ describe('HunkView', () => {
     fireEvent.mouseMove(document, { clientX: 150 })
 
     expect(onOldColumnWidthChange).toHaveBeenCalledWith(270)
+  })
+
+  it('hides the column resizer in stacked layout', () => {
+    const { container } = renderHunkView({ layout: 'stacked' })
+
+    expect(
+      container.querySelector('[style*="grid-template-columns"]'),
+    ).toBeNull()
+  })
+
+  it('reports layout changes from the view toggle', async () => {
+    const user = userEvent.setup()
+    const onLayoutChange = vi.fn()
+    renderHunkView({ layout: 'stacked', onLayoutChange })
+
+    await user.click(
+      document.querySelector(
+        'button[title="Show the diff and file side by side"]',
+      )!,
+    )
+    await user.click(
+      document.querySelector('button[title="Stack the diff above the file"]')!,
+    )
+
+    expect(onLayoutChange).toHaveBeenNthCalledWith(1, 'side-by-side')
+    expect(onLayoutChange).toHaveBeenNthCalledWith(2, 'stacked')
   })
 })

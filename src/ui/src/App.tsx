@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import styled from 'styled-components'
 
 // Components
@@ -14,7 +15,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { findNextPendingHunkId } from './lib/hunkNav'
 
 // Types
-import type { HunkStatus, ReviewFile } from './types'
+import type { DiffLayout, HunkStatus, ReviewFile } from './types'
 
 const App = () => {
   const {
@@ -24,6 +25,7 @@ const App = () => {
     setHunkStatus,
     submitReview,
   } = useReviewSession()
+  const [diffLayout, setDiffLayout] = useState<DiffLayout>('stacked')
 
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =
@@ -113,6 +115,8 @@ const App = () => {
                   : null
               }
               onSetStatus={handleSetStatus}
+              layout={diffLayout}
+              onLayoutChange={setDiffLayout}
             />
           ) : (
             <EmptyState>

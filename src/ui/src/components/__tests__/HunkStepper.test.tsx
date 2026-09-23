@@ -67,6 +67,8 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
+        layout="stacked"
+        onLayoutChange={() => {}}
       />,
     )
 
@@ -86,6 +88,8 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={onSetStatus}
+        layout="stacked"
+        onLayoutChange={() => {}}
       />,
     )
 
@@ -107,6 +111,8 @@ describe('HunkStepper', () => {
         onPrev={onPrev}
         onNext={onNext}
         onSetStatus={() => {}}
+        layout="stacked"
+        onLayoutChange={() => {}}
       />,
     )
 
@@ -127,6 +133,8 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
+        layout="stacked"
+        onLayoutChange={() => {}}
       />,
     )
 
@@ -144,6 +152,8 @@ describe('HunkStepper', () => {
         onPrev={null}
         onNext={() => {}}
         onSetStatus={() => {}}
+        layout="side-by-side"
+        onLayoutChange={() => {}}
       />,
     )
 
@@ -166,6 +176,8 @@ describe('HunkStepper', () => {
         onPrev={() => {}}
         onNext={null}
         onSetStatus={() => {}}
+        layout="side-by-side"
+        onLayoutChange={() => {}}
       />,
     )
 

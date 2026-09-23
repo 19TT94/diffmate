@@ -29,9 +29,11 @@ const variantStyles = {
     }
   `,
   ghost: css<StyledButtonProps>`
-    background-color: transparent;
+    background-color: ${({ theme, $active }) =>
+      $active ? theme.colors.tertiary : 'transparent'};
     border-color: transparent;
-    color: ${({ theme }) => theme.colors.muted};
+    color: ${({ theme, $active }) =>
+      $active ? theme.colors.secondary : theme.colors.muted};
 
     &:hover:not(:disabled) {
       background-color: ${({ theme }) => theme.colors.background};
