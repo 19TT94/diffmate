@@ -13,6 +13,8 @@ export interface DiffLine {
 
 export type HunkStatus = 'pending' | 'approved' | 'rejected'
 
+export type DiffLayout = 'stacked' | 'side-by-side'
+
 export interface Question {
   id: string
   hunkId: string

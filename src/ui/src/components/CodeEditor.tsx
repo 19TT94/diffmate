@@ -26,15 +26,19 @@ import {
   setReviewSpanEffect,
   type ReviewSpan,
   diffSideExtensions,
+  sideBySideColumnExtensions,
+  type DiffNumberSide,
 } from '../lib/cmReview'
 
 // Types
-import type { Hunk } from '../types'
+import type { DiffLine, Hunk } from '../types'
 
 interface CodeEditorProps {
   filePath: string
   mode: 'diff' | 'editable'
   hunk?: Hunk
+  diffLines?: DiffLine[]
+  diffNumberSide?: DiffNumberSide
   content?: string
   hunkSpan?: ReviewSpan | null
   onDocChanged?: (content: string) => void
@@ -47,6 +51,8 @@ export function CodeEditor({
   filePath,
   mode,
   hunk,
+  diffLines,
+  diffNumberSide,
   content,
   hunkSpan,
   onDocChanged,
@@ -64,7 +70,7 @@ export function CodeEditor({
   useEffect(() => {
     if (!hostRef.current) return
     const doc = readOnly
-      ? Text.of(hunk!.lines.map((line) => line.content))
+      ? Text.of((diffLines ?? hunk!.lines).map((line) => line.content))
       : Text.of(content!.split('\n'))
     const extensions: Extension[] = [
       cmHighlightTheme(),
@@ -84,7 +90,11 @@ export function CodeEditor({
       lineNumbers(),
     ]
     if (readOnly) {
-      extensions.push(...diffSideExtensions(hunk!))
+      extensions.push(
+        ...(diffLines
+          ? sideBySideColumnExtensions(diffLines, diffNumberSide!)
+          : diffSideExtensions(hunk!)),
+      )
     } else {
       extensions.push(
         reviewSpanField,
@@ -131,7 +141,7 @@ export function CodeEditor({
   }, [hunkSpan, readOnly])
 
   if (mode === 'diff') {
-    if (!hunk) return null
+    if (!hunk && !diffLines) return null
   }
   if (mode === 'editable' && content === undefined) return null
 

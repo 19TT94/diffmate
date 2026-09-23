@@ -226,3 +226,46 @@ export function diffSideExtensions(hunk: Hunk): Extension[] {
     EditorView.decorations.of(buildDiffDecorations(doc, hunk.lines)),
   ]
 }
+
+export type DiffNumberSide = 'old' | 'new'
+
+// Gutter labels and add/del tints for one side-by-side column. Numberless
+// filler rows (see sideBySideColumn) get an empty label and no tint.
+function buildSideNumberMarkers(
+  doc: Text,
+  lines: DiffLine[],
+  side: DiffNumberSide,
+): RangeSet<GutterMarker> {
+  const builder = new RangeSetBuilder<GutterMarker>()
+  for (let index = 0; index < doc.lines; index++) {
+    const line = doc.line(index + 1)
+    const src = lines[index]!
+    const number = side === 'old' ? src.oldLineNumber : src.newLineNumber
+    const className =
+      src.type === 'add'
+        ? 'cm-diff-gutter-add'
+        : src.type === 'del'
+          ? 'cm-diff-gutter-del'
+          : undefined
+    builder.add(
+      line.from,
+      line.from,
+      new HunkGutterMarker(number === null ? '' : String(number), className),
+    )
+  }
+  return builder.finish()
+}
+
+// Read-only extensions for a side-by-side column: real old/new line
+// numbers in the gutter, add/del row tints, blank lines for the opposite
+// cell. The two columns share one row model so their line grids line up.
+export function sideBySideColumnExtensions(
+  lines: DiffLine[],
+  side: DiffNumberSide,
+): Extension[] {
+  const doc = Text.of(lines.map((diffLine) => diffLine.content))
+  return [
+    lineNumberMarkers.of(buildSideNumberMarkers(doc, lines, side)),
+    EditorView.decorations.of(buildDiffDecorations(doc, lines)),
+  ]
+}
