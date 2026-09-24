@@ -208,6 +208,8 @@ function summarizeSession(session: ReviewSession) {
     mode: session.mode,
     scope: session.scope,
     files: session.files,
+    title: session.title,
+    summary: session.summary,
     reviewComplete: session.reviewComplete,
   }
 }

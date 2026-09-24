@@ -203,9 +203,11 @@ spawns stdio MCP servers tied to that session's lifetime, so one MCP process
 v1 (a second `start_review` while one is active errors clearly).
 
 Tools:
-- **`start_review`** `{ base?, staged?, title? }` → builds the session
+- **`start_review`** `{ base?, staged?, title?, summary? }` → builds the session
   (`mode: 'mcp'`), starts the server, opens the browser, returns
   immediately (non-blocking) with `{ sessionId, url, fileCount, hunkCount }`.
+  `title`/`summary` are session-level agent context surfaced by the UI's
+  banner (per-hunk summaries are a later slice).
 - **`wait_for_activity`** `{ sessionId, timeoutSeconds? (~20-25 default) }`
   → long-poll on the session's bus. Returns `{ type: 'no_activity' }` (agent
   calls again immediately — this is the poll/wait loop, not busy-polling,
@@ -266,6 +268,8 @@ Installation (`diffmate install`):
   recommend publishing v0.1**. **Done.**
 - **M8** MCP server + four tools, reusing the engine unchanged (should
   require no rework if M3's bus was built generically) — depends on M3/M4.
+  **In progress** — M8.1 (`start_review` + session-level agent context in
+  the UI) landed; `wait_for_activity`/`answer_question`/`end_review` remain.
 - **M9** UI additions for Q&A (ask box, threaded display, SSE client, mode
   detection) — depends on M8.
 - **M10** `diffmate install` (`.mcp.json` merge + slash command).
