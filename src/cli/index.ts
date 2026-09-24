@@ -14,6 +14,9 @@ import { startReviewServer } from '../engine/httpServer.js'
 // CLI
 import { CliArgError, parseArgs, USAGE } from './args.js'
 
+// MCP
+import { runMcpServer } from '../mcp/server.js'
+
 // Types
 import type { CliArgs } from './args.js'
 
@@ -24,7 +27,7 @@ export interface ReviewDeps {
   uiDir?: string
 }
 
-function defaultUiDir(): string {
+export function defaultUiDir(): string {
   // The CLI module lives at <root>/src/cli/index.ts (or <root>/dist/cli/
   // index.js after `npm run build`), so the package root is two levels up
   // either way.
@@ -98,6 +101,18 @@ async function run(argv: string[]): Promise<number> {
     throw error
   }
 
+  if (args.subcommand === 'mcp') {
+    try {
+      await runMcpServer()
+      return 0
+    } catch (error) {
+      process.stderr.write(
+        `diffmate: ${error instanceof Error ? error.message : String(error)}\n`,
+      )
+      return 1
+    }
+  }
+
   try {
     return await runReview(args, {
       stdout: (text) => process.stdout.write(text),
@@ -111,7 +126,7 @@ async function run(argv: string[]): Promise<number> {
   }
 }
 
-function openBrowser(url: string): void {
+export function openBrowser(url: string): void {
   const opener =
     process.platform === 'darwin'
       ? 'open'

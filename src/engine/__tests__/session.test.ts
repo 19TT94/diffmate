@@ -141,3 +141,22 @@ test('complete marks the session done and emits review_complete once', () => {
   assert.equal(session.reviewComplete, true)
   assert.deepEqual(events, [{ sessionId: session.id }])
 })
+
+test('defaults agent context to null title and summary', () => {
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  assert.equal(session.title, null)
+  assert.equal(session.summary, null)
+})
+
+test('stores agent title and summary for MCP sessions', () => {
+  const session = new ReviewSession('mcp', {}, fixtureFiles(), {
+    title: 'Add size variants to Button',
+    summary: 'Claude added an optional sm/md size to Button.',
+  })
+
+  assert.equal(session.title, 'Add size variants to Button')
+  assert.equal(
+    session.summary,
+    'Claude added an optional sm/md size to Button.',
+  )
+})

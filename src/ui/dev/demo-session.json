@@ -1,8 +1,10 @@
 {
   "session": {
     "id": "demo",
-    "mode": "cli",
+    "mode": "mcp",
     "scope": {},
+    "title": "Add Button size variants + compact toolbar action",
+    "summary": "Claude's change: adds an optional sm/md size to Button and uses the compact token everywhere in the review toolbar so actions fit without wrapping. Added 3 hunks across the UI package.",
     "reviewComplete": false,
     "files": [
       {

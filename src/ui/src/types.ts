@@ -66,5 +66,9 @@ export interface ReviewSessionSummary {
   mode: SessionMode
   scope: DiffScope
   files: ReviewFile[]
+  // Agent framing of the review, supplied by MCP's start_review: what the
+  // change is and why. Both null for CLI sessions.
+  title: string | null
+  summary: string | null
   reviewComplete: boolean
 }
