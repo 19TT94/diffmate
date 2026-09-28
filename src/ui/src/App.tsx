@@ -2,6 +2,7 @@ import { useState } from 'react'
 import styled from 'styled-components'
 
 // Components
+import { AgentContext } from './components/AgentContext'
 import { Banner } from './components/Banner'
 import { FileList } from './components/FileList'
 import { HunkStepper } from './components/HunkStepper'
@@ -87,6 +88,11 @@ const App = () => {
         hunks={flatHunks}
         reviewComplete={session.reviewComplete}
         onSubmit={submitReview}
+      />
+      <AgentContext
+        mode={session.mode}
+        title={session.title}
+        summary={session.summary}
       />
       <Layout>
         <FileList

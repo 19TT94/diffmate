@@ -16,7 +16,7 @@
   "scripts": {
     "build": "npm run build:ui && esbuild src/cli/index.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/cli/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/engine/**/*.test.ts src/cli/**/*.test.ts && npm run test:ui",
+    "test": "tsx --test src/engine/**/*.test.ts src/cli/**/*.test.ts src/mcp/**/*.test.ts && npm run test:ui",
     "test:ui": "npm --prefix src/ui run test",
     "dev:ui": "npm --prefix src/ui run dev",
     "build:ui": "npm --prefix src/ui run build",
@@ -30,5 +30,8 @@
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "typescript": "~6.0.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.1"
   }
 }

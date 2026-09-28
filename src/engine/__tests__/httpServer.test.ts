@@ -99,8 +99,32 @@ test('GET /api/session returns the session summary', async () => {
     assert.equal(body.id, session.id)
     assert.equal(body.mode, 'cli')
     assert.equal(body.reviewComplete, false)
+    assert.equal(body.title, null)
+    assert.equal(body.summary, null)
     assert.equal(body.files[0].hunks[0].status, 'pending')
   })
+})
+
+test('GET /api/session includes the agent title/summary', async () => {
+  const uiDir = await mkdtemp(path.join(tmpdir(), 'diffmate-ui-'))
+  await writeFile(path.join(uiDir, 'index.html'), '<h1>diffmate</h1>')
+  const repoRoot = await mkdtemp(path.join(tmpdir(), 'diffmate-repo-'))
+  const session = new ReviewSession('mcp', {}, fixtureFiles(), {
+    title: 'My review',
+    summary: 'Claude changed some things.',
+  })
+  const server = await startReviewServer(session, uiDir, repoRoot)
+  try {
+    const res = await fetch(
+      `http://127.0.0.1:${server.port}/api/session?token=${server.token}`,
+    )
+    const body = await res.json()
+    assert.equal(body.title, 'My review')
+    assert.equal(body.summary, 'Claude changed some things.')
+    assert.equal(body.mode, 'mcp')
+  } finally {
+    await server.close()
+  }
 })
 
 test('POST /api/hunks/:id/status updates the hunk', async () => {
