@@ -74,6 +74,8 @@ review UI against a real repo with a small demo script:
 npm run build:ui                 # only needed once, or after UI changes
 npm run demo                      # reviews the working-tree diff of the current directory
 npm run demo -- /path/to/a/repo    # or point it at any other git repo
+# Optional agent framing (same banner MCP's start_review supplies):
+npm run demo -- /path/to/a/repo --title "My change" --summary "Why it exists"
 ```
 
 This opens a browser tab against that repo's uncommitted changes (staged +
@@ -91,7 +93,7 @@ the `diffmate-demo` command once:
 ```bash
 npm link              # from this checkout, after npm run build:ui
 cd /path/to/a/repo
-diffmate-demo          # reviews that repo's own working-tree diff
+diffmate-demo --title "My change" --summary "Why it exists"
 ```
 
 This is a stopgap for milestone M7, not a preview of the final CLI
