@@ -1,5 +1,20 @@
 #!/usr/bin/env node
-console.error(
-  'diffmate: CLI not implemented yet — see docs/PLAN.md (milestone M7).',
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const cliEntry = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'dist',
+  'cli',
+  'index.js',
 )
-process.exit(1)
+
+if (!existsSync(cliEntry)) {
+  console.error('diffmate: build not found — run `npm run build` first.')
+  process.exit(1)
+}
+
+const { main } = await import(cliEntry)
+main(process.argv.slice(2))
