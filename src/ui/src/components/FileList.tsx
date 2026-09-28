@@ -42,6 +42,11 @@ export function FileList({
         <List>
           {files.map((file, index) => {
             const { add, del } = fileLineStats(file)
+            const lastSlash = file.path.lastIndexOf('/')
+            const dir =
+              lastSlash === -1 ? null : file.path.slice(0, lastSlash + 1)
+            const name =
+              lastSlash === -1 ? file.path : file.path.slice(lastSlash + 1)
             return (
               <Item
                 key={file.path}
@@ -49,7 +54,10 @@ export function FileList({
                 onClick={() => onSelectFile(index)}
               >
                 <Badge status={fileBadgeStatus(file)} />
-                <Path>{file.path}</Path>
+                <Path title={file.path}>
+                  {dir && <Dir>{dir}</Dir>}
+                  <Name>{name}</Name>
+                </Path>
                 <Stat>
                   <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
                 </Stat>
@@ -163,10 +171,25 @@ const Item = styled.div<{ $current: boolean }>`
 
 const Path = styled.span`
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-family: ${({ theme }) => theme.fonts.mono};
+`
+
+const Dir = styled.span`
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${({ theme }) => theme.colors.muted};
+`
+
+const Name = styled.span`
+  flex: none;
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  color: ${({ theme }) => theme.colors.secondary};
 `
 
 const StatAdd = styled.span`

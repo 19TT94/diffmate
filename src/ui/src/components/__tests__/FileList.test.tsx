@@ -118,4 +118,20 @@ describe('FileList', () => {
     )
     expect(document.body.textContent).toContain('a.txt')
   })
+
+  it('shows the file name in full and resolves the full path on hover', () => {
+    renderWithTheme(
+      <FileList
+        files={[fixtureFile({ path: 'src/ui/components/FileList.tsx' })]}
+        currentPath={null}
+        onSelectFile={() => {}}
+        onBulkSetStatus={() => {}}
+      />,
+    )
+
+    expect(document.body.textContent).toContain('FileList.tsx')
+    expect(
+      document.querySelector('[title="src/ui/components/FileList.tsx"]'),
+    ).not.toBeNull()
+  })
 })

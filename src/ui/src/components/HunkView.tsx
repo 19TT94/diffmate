@@ -1,13 +1,15 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
+import { ViewModeToggle } from './ui/ViewModeToggle'
 import { DiffSide } from './DiffSide'
 import { FileEditor } from './FileEditor'
+import { SideBySideDiff } from './SideBySideDiff'
 
 // Types
-import type { Hunk, HunkStatus } from '../types'
+import type { DiffLayout, Hunk, HunkStatus } from '../types'
 
 const MIN_OLD_WIDTH = 120
 const MAX_OLD_WIDTH = 600
@@ -24,6 +26,8 @@ interface HunkViewProps {
   fileContentLoading: boolean
   oldColumnWidth: number
   onOldColumnWidthChange: (width: number) => void
+  layout: DiffLayout
+  onLayoutChange: (layout: DiffLayout) => void
 }
 
 export function HunkView({
@@ -38,6 +42,8 @@ export function HunkView({
   fileContentLoading,
   oldColumnWidth,
   onOldColumnWidthChange,
+  layout,
+  onLayoutChange,
 }: HunkViewProps) {
   function handleResizeStart(event: ReactMouseEvent): void {
     event.preventDefault()
@@ -57,6 +63,21 @@ export function HunkView({
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
   }
+
+  const newSide = fileContentLoading ? (
+    <Placeholder>Loading file…</Placeholder>
+  ) : fileContentError ? (
+    <Placeholder>{fileContentError}</Placeholder>
+  ) : fileContent === null ? (
+    <Placeholder>No content available.</Placeholder>
+  ) : (
+    <FileEditor
+      content={fileContent}
+      filePath={filePath}
+      hunk={hunk}
+      onDocChanged={onFileChange}
+    />
+  )
 
   return (
     <Container id={`hunk-${hunk.id}`} $focused={isFocused} onClick={onFocus}>
@@ -85,6 +106,7 @@ export function HunkView({
         >
           Reset
         </Button>
+        <ViewModeToggle layout={layout} onLayoutChange={onLayoutChange} />
       </Toolbar>
 
       {hunk.summary !== null && (
@@ -94,27 +116,30 @@ export function HunkView({
         </Summary>
       )}
 
-      <Rows style={{ gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }}>
-        <OldSide>
-          <DiffSide hunk={hunk} filePath={filePath} />
-        </OldSide>
-        <Resizer onMouseDown={handleResizeStart} />
-        <NewSide>
-          {fileContentLoading ? (
-            <Placeholder>Loading file…</Placeholder>
-          ) : fileContentError ? (
-            <Placeholder>{fileContentError}</Placeholder>
-          ) : fileContent === null ? (
-            <Placeholder>No content available.</Placeholder>
-          ) : (
-            <FileEditor
-              content={fileContent}
-              filePath={filePath}
-              hunk={hunk}
-              onDocChanged={onFileChange}
-            />
-          )}
-        </NewSide>
+      <Rows
+        $stacked={layout === 'stacked'}
+        style={
+          layout === 'stacked'
+            ? undefined
+            : { gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }
+        }
+      >
+        {layout === 'stacked' ? (
+          <>
+            <DiffPane>
+              <SideBySideDiff hunk={hunk} filePath={filePath} />
+            </DiffPane>
+            <NewSide>{newSide}</NewSide>
+          </>
+        ) : (
+          <>
+            <OldSide>
+              <DiffSide hunk={hunk} filePath={filePath} />
+            </OldSide>
+            <Resizer onMouseDown={handleResizeStart} />
+            <NewSide>{newSide}</NewSide>
+          </>
+        )}
       </Rows>
     </Container>
   )
@@ -179,19 +204,36 @@ const SummaryText = styled.p`
   white-space: pre-wrap;
 `
 
-// The old side is a narrow, resizable reference strip; the new side is the
-// whole (post-change) file. grid-template-rows uses minmax(0, 1fr) so the
-// row can actually shrink instead of growing to fit content.
-const Rows = styled.div`
+// Stacked puts a side-by-side hunk comparison across the top with the file
+// below; side-by-side puts the old strip and the file in columns split by a
+// draggable gutter. grid-template-rows uses minmax(0, 1fr) so a row can
+// actually shrink instead of growing to fit content.
+const Rows = styled.div<{ $stacked: boolean }>`
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  ${({ $stacked }) =>
+    $stacked
+      ? css`
+          grid-template-rows: minmax(0, 40%) 1fr;
+        `
+      : css`
+          grid-template-rows: minmax(0, 1fr);
+        `}
 `
 
 const OldSide = styled.div`
   min-height: 0;
   overflow: hidden;
+`
+
+const DiffPane = styled.div`
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `
 
 const Resizer = styled.div`

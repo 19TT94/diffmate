@@ -9,7 +9,7 @@ import { HunkView } from './HunkView'
 import { useFileContent } from '../hooks/useFileContent'
 
 // Types
-import type { Hunk, HunkStatus, ReviewFile } from '../types'
+import type { DiffLayout, Hunk, HunkStatus, ReviewFile } from '../types'
 
 const DEFAULT_OLD_COLUMN_WIDTH = 220
 
@@ -22,6 +22,8 @@ interface HunkStepperProps {
   onNext: (() => void) | null
   onSetStatus: (hunkId: string, status: HunkStatus) => void
   onFileChange?: (content: string) => void
+  layout: DiffLayout
+  onLayoutChange: (layout: DiffLayout) => void
 }
 
 export function HunkStepper({
@@ -33,6 +35,8 @@ export function HunkStepper({
   onNext,
   onSetStatus,
   onFileChange,
+  layout,
+  onLayoutChange,
 }: HunkStepperProps) {
   const {
     content: fileContent,
@@ -68,6 +72,8 @@ export function HunkStepper({
         fileContentLoading={fileContentLoading}
         oldColumnWidth={oldColumnWidth}
         onOldColumnWidthChange={setOldColumnWidth}
+        layout={layout}
+        onLayoutChange={onLayoutChange}
       />
 
       <Nav>
