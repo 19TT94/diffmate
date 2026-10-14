@@ -10,9 +10,18 @@ import { parseDiff, parseUntrackedFile } from '../src/engine/parseDiff.js'
 import { ReviewSession } from '../src/engine/session.js'
 import { startReviewServer } from '../src/engine/httpServer.js'
 
-// Stand-in for the real `diffmate review` CLI (build order M7, not yet
-// built): wires the engine pieces together end-to-end against a real repo
-// so the UI can be tried before the CLI/output builder land.
+// Demo
+import {
+  DEMO_USAGE,
+  DemoArgError,
+  parseDemoArgs,
+  type DemoArgs,
+} from './demoArgs.js'
+
+// Stand-in for the real `diffmate review` CLI: wires the engine pieces
+// together end-to-end against a real repo so the UI can be tried before
+// (or alongside) the MCP path. Optional --title/--summary simulate the
+// agent context MCP's start_review normally supplies.
 
 const projectRoot = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -25,7 +34,19 @@ if (!existsSync(path.join(uiDir, 'index.html'))) {
   process.exit(1)
 }
 
-const targetRepo = path.resolve(process.argv[2] ?? process.cwd())
+let demoArgs: DemoArgs
+try {
+  demoArgs = parseDemoArgs(process.argv.slice(2))
+} catch (error) {
+  if (error instanceof DemoArgError) {
+    console.error(`${error.message}\n\n${DEMO_USAGE}`)
+    process.exit(2)
+  }
+  throw error
+}
+
+const targetRepo = path.resolve(demoArgs.repo ?? process.cwd())
+const hasAgentContext = demoArgs.title !== null || demoArgs.summary !== null
 
 const raw = await resolveDiff({}, targetRepo)
 const files = parseDiff(raw.diffText)
@@ -34,7 +55,12 @@ for (const relPath of raw.untrackedFiles) {
   files.push(parseUntrackedFile(relPath, content))
 }
 
-const session = new ReviewSession('cli', {}, files)
+// mode 'mcp' so AgentContext renders when title/summary are supplied —
+// same banner path as a real start_review session.
+const session = new ReviewSession(hasAgentContext ? 'mcp' : 'cli', {}, files, {
+  title: demoArgs.title,
+  summary: demoArgs.summary,
+})
 const server = await startReviewServer(session, uiDir, raw.repoRoot)
 
 console.log(`Reviewing: ${raw.repoRoot}`)

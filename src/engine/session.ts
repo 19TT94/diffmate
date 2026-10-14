@@ -39,11 +39,21 @@ function toReviewFile(file: ParsedFile): ReviewFile {
   }
 }
 
+// The agent's framing of the review, shown in the UI so the reviewer sees
+// what the agent was doing and why before judging individual hunks. Only
+// phase 2's MCP start_review supplies it; CLI reviews leave it null.
+export interface SessionAgentContext {
+  title: string | null
+  summary: string | null
+}
+
 export class ReviewSession {
   readonly id: string
   readonly mode: SessionMode
   readonly scope: DiffScope
   readonly files: ReviewFile[]
+  readonly title: string | null
+  readonly summary: string | null
   // Generic pub/sub, not a single resolve-once promise: phase 1's CLI waits
   // on 'review_complete' the same way phase 2's MCP wait_for_activity will,
   // without this class needing to change shape between the two.
@@ -56,11 +66,18 @@ export class ReviewSession {
   private readonly hunksById: Map<string, HunkLocation>
   private readonly questionsById: Map<string, Question>
 
-  constructor(mode: SessionMode, scope: DiffScope, files: ParsedFile[]) {
+  constructor(
+    mode: SessionMode,
+    scope: DiffScope,
+    files: ParsedFile[],
+    agent: SessionAgentContext = { title: null, summary: null },
+  ) {
     this.id = randomUUID()
     this.mode = mode
     this.scope = scope
     this.files = files.map(toReviewFile)
+    this.title = agent.title
+    this.summary = agent.summary
     this.bus = new EventEmitter()
     this.reviewComplete = false
 
