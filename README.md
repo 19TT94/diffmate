@@ -76,6 +76,9 @@ npm run demo                      # reviews the working-tree diff of the current
 npm run demo -- /path/to/a/repo    # or point it at any other git repo
 # Optional agent framing (same banner MCP's start_review supplies):
 npm run demo -- /path/to/a/repo --title "My change" --summary "Why it exists"
+# Drive it through a real `diffmate mcp` process with a scripted agent that
+# answers questions (POST /api/questions until the M9 ask box lands):
+npm run demo -- /path/to/a/repo --mcp --title "My change"
 ```
 
 This opens a browser tab against that repo's uncommitted changes (staged +

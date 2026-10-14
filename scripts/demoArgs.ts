@@ -2,11 +2,12 @@ export interface DemoArgs {
   repo: string | null
   title: string | null
   summary: string | null
+  mcp: boolean
 }
 
 export class DemoArgError extends Error {}
 
-export const DEMO_USAGE = `Usage: diffmate-demo [dir] [--title <text>] [--summary <text>]
+export const DEMO_USAGE = `Usage: diffmate-demo [dir] [--title <text>] [--summary <text>] [--mcp]
 
 Review a repo's working-tree diff in the browser UI (demo stand-in).
 
@@ -16,6 +17,8 @@ Arguments:
 Options:
   --title <text>       Agent-style title shown in the review UI
   --summary <text>     Agent-style summary shown in the review UI
+  --mcp                Drive the review through a real \`diffmate mcp\` process
+                       with a scripted stand-in agent that answers questions
 `
 
 function readOptionValue(
@@ -40,6 +43,7 @@ export function parseDemoArgs(argv: string[]): DemoArgs {
     repo: null,
     title: null,
     summary: null,
+    mcp: false,
   }
 
   for (let i = 0; i < argv.length; i++) {
@@ -61,6 +65,10 @@ export function parseDemoArgs(argv: string[]): DemoArgs {
       const { value, nextIndex } = readOptionValue(argv, i, '--summary', inline)
       args.summary = value
       i = nextIndex
+      continue
+    }
+    if (arg === '--mcp') {
+      args.mcp = true
       continue
     }
     if (arg.startsWith('-')) {

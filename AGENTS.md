@@ -12,10 +12,10 @@ In progress. The harness-agnostic engine (git access, diff parsing,
 `ReviewSession` state/event model, REST/SSE HTTP server, structured
 output builder), the React review UI, and the phase-1 one-shot CLI
 (`diffmate` / `diffmate review`, `npm run build` -> `dist/`) are built
-and tested. The MCP stdio server's `start_review` tool (M8.1) ships the
-agent's session title/summary into the UI; the remaining MCP tools
-(`wait_for_activity` / `answer_question` / `end_review`) and
-`diffmate install` (phase 2) are still to come. See
+and tested. The MCP stdio server (`diffmate mcp`) exposes all four tools
+(`start_review` / `wait_for_activity` / `answer_question` / `end_review`),
+verified against a live Claude Code session; the Q&A UI (M9) and
+`diffmate install` (M10) are still to come. See
 [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, package
 layout, and build order.
 

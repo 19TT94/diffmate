@@ -1,7 +1,10 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 // Engine
 import { readUntrackedFile, resolveDiff } from '../src/engine/git.js'
@@ -17,6 +20,7 @@ import {
   parseDemoArgs,
   type DemoArgs,
 } from './demoArgs.js'
+import { runDemoAgent } from './demoAgent.js'
 
 // Stand-in for the real `diffmate review` CLI: wires the engine pieces
 // together end-to-end against a real repo so the UI can be tried before
@@ -47,6 +51,35 @@ try {
 
 const targetRepo = path.resolve(demoArgs.repo ?? process.cwd())
 const hasAgentContext = demoArgs.title !== null || demoArgs.summary !== null
+
+if (demoArgs.mcp) {
+  // Spawn the real stdio MCP server in the target repo, exactly as Claude
+  // Code would, and let a scripted agent drive it.
+  const cliEntry = pathToFileURL(path.join(projectRoot, 'src/cli/index.ts'))
+  const transport = new StdioClientTransport({
+    command: path.join(projectRoot, 'node_modules/.bin/tsx'),
+    args: [
+      '--eval',
+      `import(${JSON.stringify(cliEntry.href)}).then((m) => m.main(['mcp']))`,
+    ],
+    cwd: targetRepo,
+    stderr: 'inherit',
+  })
+  const client = new Client({ name: 'diffmate-demo-agent', version: '0.1.0' })
+  await client.connect(transport)
+  console.log('Demo agent connected to `diffmate mcp`.')
+  console.log(
+    'Ask questions with: curl -X POST "<origin>/api/questions?token=<token>" ' +
+      `-H 'Content-Type: application/json' -d '{"hunkId":"…","text":"…"}'`,
+  )
+  await runDemoAgent(client, {
+    title: demoArgs.title,
+    summary: demoArgs.summary,
+    log: (text) => console.log(text),
+  })
+  await client.close()
+  process.exit(0)
+}
 
 const raw = await resolveDiff({}, targetRepo)
 const files = parseDiff(raw.diffText)
