@@ -8,6 +8,7 @@ test('parseDemoArgs defaults to no repo or agent context', () => {
     repo: null,
     title: null,
     summary: null,
+    mcp: false,
   })
 })
 
@@ -24,6 +25,7 @@ test('parseDemoArgs accepts a repo path and title/summary flags', () => {
       repo: '/tmp/repo',
       title: 'Add size variants',
       summary: 'Claude added sm/md sizes.',
+      mcp: false,
     },
   )
 })
@@ -35,8 +37,13 @@ test('parseDemoArgs accepts --title= and --summary= forms', () => {
       repo: '../other',
       title: 'Hello',
       summary: 'World',
+      mcp: false,
     },
   )
+})
+
+test('parseDemoArgs accepts --mcp', () => {
+  assert.equal(parseDemoArgs(['--mcp']).mcp, true)
 })
 
 test('parseDemoArgs rejects unknown flags and missing values', () => {

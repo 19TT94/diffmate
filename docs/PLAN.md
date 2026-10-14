@@ -9,8 +9,8 @@ stepping, triggered from inside the coding harness. It already nails the
 diff-viewing UX, but it's architecturally a one-shot blocking call — the CLI
 starts a server, blocks for a single `/submit`, and exits. That shape can't
 support two things wanted on top of it: an explicit approve/reject decision
-per hunk (Cursor-style), and asking the *actual agent session that wrote the
-diff* a question and getting a real answer back — not a comment queued for
+per hunk (Cursor-style), and asking the _actual agent session that wrote the
+diff_ a question and getting a real answer back — not a comment queued for
 later.
 
 **diffmate** is a from-scratch rewrite (not a fork — MIT license means we
@@ -181,6 +181,7 @@ focus comment box.
 
 Structured output rules on submit (markdown by default, `--json` for a
 machine-readable variant):
+
 - Header: counts (approved / rejected / commented / pending).
 - **Approved, no comment** → excluded entirely.
 - **Approved, with comment** → included under "Approved (with notes)" so a
@@ -203,16 +204,19 @@ spawns stdio MCP servers tied to that session's lifetime, so one MCP process
 v1 (a second `start_review` while one is active errors clearly).
 
 Tools:
+
 - **`start_review`** `{ base?, staged?, title?, summary? }` → builds the session
   (`mode: 'mcp'`), starts the server, opens the browser, returns
   immediately (non-blocking) with `{ sessionId, url, fileCount, hunkCount }`.
   `title`/`summary` are session-level agent context surfaced by the UI's
   banner (per-hunk summaries are a later slice).
 - **`wait_for_activity`** `{ sessionId, timeoutSeconds? (~20-25 default) }`
-  → long-poll on the session's bus. Returns `{ type: 'no_activity' }` (agent
-  calls again immediately — this is the poll/wait loop, not busy-polling,
-  since the block happens server-side), `{ type: 'question', questionId,
-  hunkId, filePath, hunkHeader, questionText }` (drained one at a time), or
+  → long-poll on the session's bus. Returns `{ type: 'no_activity',
+pending, decided, idleSeconds }` (agent calls again immediately — this is
+  the poll/wait loop, not busy-polling, since the block happens
+  server-side; the counts let it tell a busy reviewer from an absent one and
+  stop after ~10 idle minutes), `{ type: 'question', questionId,
+hunkId, filePath, hunkHeader, questionText }` (drained one at a time), or
   `{ type: 'review_complete', decisions: {...}, summaryMarkdown }`
   (terminal — agent stops looping).
 - **`answer_question`** `{ sessionId, questionId, answer }` → stores the
@@ -233,6 +237,7 @@ up by the browser's open `GET /api/events` SSE connection. A
 show/hide the "ask the agent" box without a separate build.
 
 Installation (`diffmate install`):
+
 1. Merge a `diffmate` entry into project-root `.mcp.json`
    (`{ "command": "npx", "args": ["diffmate", "mcp"] }`), creating it if
    absent.
@@ -268,8 +273,12 @@ Installation (`diffmate install`):
   recommend publishing v0.1**. **Done.**
 - **M8** MCP server + four tools, reusing the engine unchanged (should
   require no rework if M3's bus was built generically) — depends on M3/M4.
-  **In progress** — M8.1 (`start_review` + session-level agent context in
-  the UI) landed; `wait_for_activity`/`answer_question`/`end_review` remain.
+  **Built** — all four tools, plus `npm run demo -- --mcp` (a scripted
+  stand-in agent over real stdio). The engine change was additive only
+  (`ReviewSession.end()` + a `review_ended` SSE event). Verified against a
+  live Claude Code session: the full loop including `answer_question`, and
+  ~45 consecutive 25s `wait_for_activity` calls with no tool-call timeout
+  (the actual ceiling is still unmeasured). **Done.**
 - **M9** UI additions for Q&A (ask box, threaded display, SSE client, mode
   detection) — depends on M8.
 - **M10** `diffmate install` (`.mcp.json` merge + slash command).
@@ -281,10 +290,15 @@ Installation (`diffmate install`):
 - **Claude Code's MCP tool-call timeout is an unverified constraint** that
   directly bounds how long `wait_for_activity` can safely block. Start
   conservative (~20-25s) and verify empirically against a real Claude Code
-  session before relying on a number.
+  session before relying on a number. 25s held up in a live session; the
+  real ceiling is still unmeasured.
+- **An idle reviewer costs a model turn per `no_activity`** — ~20 idle
+  minutes is ~50 tool calls. `no_activity` carries `pending`/`decided`/
+  `idleSeconds` and the tool description tells the agent to stop looping
+  after ~10 idle minutes and hand the user the URL.
 - **Tool-approval prompt fatigue** — if `wait_for_activity` isn't
   allowlisted, Claude Code may prompt for approval every ~20s. `diffmate
-  install` should document (or attempt to configure) auto-approval for
+install` should document (or attempt to configure) auto-approval for
   diffmate's tools.
 - **Browser tab closed mid-review** — no reliable close signal. Detect SSE
   disconnect but don't auto-complete the review on it (that would make
