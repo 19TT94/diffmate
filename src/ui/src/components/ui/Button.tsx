@@ -13,7 +13,8 @@ const variantStyles = {
   primary: css<StyledButtonProps>`
     background-color: ${({ theme, $active }) => ($active ? theme.colors.success : theme.colors.primary)};
     border-color: ${({ theme, $active }) => ($active ? theme.colors.success : theme.colors.primary)};
-    color: ${({ theme }) => theme.colors.tertiary};
+    color: ${({ theme, $active }) =>
+      $active ? theme.colors.tertiary : theme.colors.onPrimary};
 
     &:hover:not(:disabled) {
       filter: brightness(0.92);

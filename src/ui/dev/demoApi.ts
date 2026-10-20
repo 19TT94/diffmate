@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 
+// Types
+import type { Settings, SettingsPatch } from '../src/types.ts'
+
 // Vite-dev-only stand-in for engine/httpServer.ts: same /api contract,
 // canned JSON session. Production `vite build` never loads this module
 // (configureServer is a dev hook). Restart Vite after editing the JSON.
@@ -11,6 +14,30 @@ const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
 const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
+
+// In memory only, so the dev server never touches the real settings file
+// (and starts from defaults on each restart). No validation: the real
+// engine checks values.
+let demoSettings: Settings = {}
+
+// A pared-down mergeSettings (src/lib/settings.ts can't be imported here
+// under the dev tsconfig's Node resolution): fields replace, null removes.
+function mergeDemoSettings(current: Settings, patch: SettingsPatch): Settings {
+  const colors: Record<string, unknown> = { ...current.colors }
+  for (const [key, value] of Object.entries(patch.colors ?? {})) {
+    if (value === null) delete colors[key]
+    else colors[key] = value
+  }
+  const next: Settings = { ...current, colors }
+  if (patch.colors === null || Object.keys(colors).length === 0) {
+    delete next.colors
+  }
+  if (patch.fileListWidth === null) delete next.fileListWidth
+  else if (patch.fileListWidth !== undefined) {
+    next.fileListWidth = patch.fileListWidth
+  }
+  return next
+}
 
 interface DemoHunk {
   id: string
@@ -95,6 +122,19 @@ async function handle(
 ): Promise<void> {
   const { pathname } = url
   const method = req.method ?? 'GET'
+
+  if (method === 'GET' && pathname === '/api/settings') {
+    sendJson(res, 200, demoSettings)
+    return
+  }
+
+  if (method === 'PATCH' && pathname === '/api/settings') {
+    // Trusted dev-only input; see demoSettings above.
+    const patch = (await readJsonBody(req)) as SettingsPatch
+    demoSettings = mergeDemoSettings(demoSettings, patch)
+    sendJson(res, 200, demoSettings)
+    return
+  }
 
   if (method === 'GET' && pathname === '/api/session') {
     sendJson(res, 200, session)

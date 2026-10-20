@@ -76,9 +76,12 @@ Per `docs/PLAN.md`:
   resolve-once promise. Phase 2's MCP `wait_for_activity` subscribes to the
   same bus phase 1's CLI uses for `review_complete`; this must never require
   reworking `session.ts`.
-- **diffmate never mutates git state or files.** Approve/reject are signals
-  only, consumed by whichever agent reads the structured output. Never let
-  UI copy or a tool description imply an auto-revert.
+- **A review never mutates git state or the repo's files.** Approve/reject
+  are signals only, consumed by whichever agent reads the structured output.
+  Never let UI copy or a tool description imply an auto-revert. The only
+  file a review writes is diffmate's own settings file outside the repo
+  (`~/.config/diffmate/settings.json`); `diffmate install` writing
+  `.mcp.json` and the slash command is a separate, explicit command.
 - Only commit when explicitly asked.
 
 ## Skills

@@ -4,51 +4,80 @@ import styled from 'styled-components'
 import { CodeEditor } from './CodeEditor'
 
 // Utils
+import { HIGHLIGHT_EDITOR_BG } from '../lib/cmTheme'
 import { buildSideBySideRows, sideBySideColumn } from '../lib/diff'
 
 // Types
-import type { Hunk } from '../types'
+import type { DiffLayout, Hunk } from '../types'
 
 interface SideBySideDiffProps {
   hunk: Hunk
   filePath: string
+  layout: DiffLayout
 }
 
-// Stacked layout's top panel: the hunk as old-vs-new columns sharing one
-// row model, so deletions stay left and additions are reprinted on the
-// right, aligned line by line.
-export function SideBySideDiff({ hunk, filePath }: SideBySideDiffProps) {
-  const rows = buildSideBySideRows(hunk.lines)
-  const oldLines = sideBySideColumn(rows, 'old')
-  const newLines = sideBySideColumn(rows, 'new')
+// The hunk's diff, either as old/new columns or as one inline diff.
+// Side by side, both columns share one row model (deletions on the old side,
+// additions reprinted on the new side, aligned line by line) and grow inside
+// one scroll container, so a single scrollbar moves them together. Inline is
+// a single pane of the hunk's own lines, interleaved with +/- gutter marks
+// and add/del tints, like a unified diff.
+export function SideBySideDiff({
+  hunk,
+  filePath,
+  layout,
+}: SideBySideDiffProps) {
+  if (layout === 'inline') {
+    return (
+      <Scroll data-testid="diff-scroll" data-layout="inline">
+        <CodeEditor
+          key={`${hunk.id}:inline`}
+          mode="diff"
+          filePath={filePath}
+          hunk={hunk}
+        />
+      </Scroll>
+    )
+  }
 
+  const rows = buildSideBySideRows(hunk.lines)
   return (
-    <Wrap>
-      <CodeEditor
-        key={`${hunk.id}:old`}
-        mode="diff"
-        filePath={filePath}
-        hunk={hunk}
-        diffLines={oldLines}
-        diffNumberSide="old"
-      />
-      <Divider />
-      <CodeEditor
-        key={`${hunk.id}:new`}
-        mode="diff"
-        filePath={filePath}
-        hunk={hunk}
-        diffLines={newLines}
-        diffNumberSide="new"
-      />
-    </Wrap>
+    <Scroll data-testid="diff-scroll" data-layout="side-by-side">
+      <Columns>
+        <CodeEditor
+          key={`${hunk.id}:old`}
+          mode="diff"
+          filePath={filePath}
+          hunk={hunk}
+          diffLines={sideBySideColumn(rows, 'old')}
+          diffNumberSide="old"
+        />
+        <Divider />
+        <CodeEditor
+          key={`${hunk.id}:new`}
+          mode="diff"
+          filePath={filePath}
+          hunk={hunk}
+          diffLines={sideBySideColumn(rows, 'new')}
+          diffNumberSide="new"
+        />
+      </Columns>
+    </Scroll>
   )
 }
 
 // Style Overrides
-const Wrap = styled.div`
+// The pane color fills any space below short diffs (e.g. in the larger
+// view), so it reads as one continuous code area.
+const Scroll = styled.div`
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  background: ${HIGHLIGHT_EDITOR_BG};
+`
+
+const Columns = styled.div`
+  min-height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
 `

@@ -1,5 +1,5 @@
 // Types
-import type { ReviewFile } from '../types'
+import type { Hunk, ReviewFile } from '../types'
 
 export type FileBadgeStatus =
   'pending' | 'approved' | 'rejected' | 'mixed' | 'binary' | 'unsupported'
@@ -22,4 +22,15 @@ export function fileLineStats(file: ReviewFile): { add: number; del: number } {
     }
   }
   return { add, del }
+}
+
+export function splitPath(path: string): { dir: string | null; name: string } {
+  const lastSlash = path.lastIndexOf('/')
+  return lastSlash === -1
+    ? { dir: null, name: path }
+    : { dir: path.slice(0, lastSlash + 1), name: path.slice(lastSlash + 1) }
+}
+
+export function reviewedCount(hunks: Hunk[]): number {
+  return hunks.filter((hunk) => hunk.status !== 'pending').length
 }

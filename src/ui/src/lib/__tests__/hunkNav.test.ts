@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 // Utils
-import { findNextPendingHunkId } from '../hunkNav'
+import { adjacentHunkIds, findNextPendingHunkId } from '../hunkNav'
 
 // Types
 import type { Hunk } from '../../types'
@@ -59,5 +59,26 @@ describe('findNextPendingHunkId', () => {
   it('searches from the start when afterId is null', () => {
     const hunks = [hunk('a', 'approved'), hunk('b', 'pending')]
     expect(findNextPendingHunkId(hunks, null)).toBe('b')
+  })
+})
+
+describe('adjacentHunkIds', () => {
+  const flat = [
+    hunk('a1', 'pending'),
+    hunk('a2', 'pending'),
+    hunk('b1', 'pending'),
+  ]
+
+  it('crosses file boundaries in review order', () => {
+    expect(adjacentHunkIds(flat, 'a2')).toEqual({ prev: 'a1', next: 'b1' })
+  })
+
+  it('has no prev at the start or next at the end of the review', () => {
+    expect(adjacentHunkIds(flat, 'a1')).toEqual({ prev: null, next: 'a2' })
+    expect(adjacentHunkIds(flat, 'b1')).toEqual({ prev: 'a2', next: null })
+  })
+
+  it('has neither for an unknown hunk', () => {
+    expect(adjacentHunkIds(flat, 'nope')).toEqual({ prev: null, next: null })
   })
 })

@@ -1,3 +1,7 @@
+// Utils
+import { readableOnWhite, readableTextOn } from '../lib/color'
+import { DEFAULT_DIFF_INTENSITY, diffTint } from '../lib/settingsTheme'
+
 const slate = '#f6f8fa'
 const black = '#1f2328'
 const white = '#ffffff'
@@ -5,15 +9,16 @@ const green = '#1a7f37'
 const red = '#cf222e'
 const blue = '#0969da'
 const amber = '#9a6700'
+const coral = '#f06543'
 const mutedGray = '#59636e'
 const borderGray = '#d0d7de'
-const addBg = '#e6ffec'
-const delBg = '#ffebe9'
 
 export const theme = {
   colors: {
     background: slate,
     primary: blue,
+    // Text drawn on primary/agent fills; recomputed when a user picks a fill.
+    onPrimary: readableTextOn(blue),
     secondary: black,
     tertiary: white,
     muted: mutedGray,
@@ -21,8 +26,12 @@ export const theme = {
     success: green,
     danger: red,
     accent: amber,
-    diffAddBg: addBg,
-    diffDelBg: delBg,
+    agent: coral,
+    onAgent: readableTextOn(coral),
+    // Agent-colored text on a white pill (the AGENT badge).
+    agentOnWhite: readableOnWhite(coral),
+    diffAddBg: diffTint('add', DEFAULT_DIFF_INTENSITY),
+    diffDelBg: diffTint('del', DEFAULT_DIFF_INTENSITY),
   },
   fonts: {
     body: 'system-ui, -apple-system, sans-serif',
@@ -40,6 +49,7 @@ export const theme = {
     bold: 700,
   },
   radii: {
+    sm: '2px',
     md: '0.375rem',
     lg: '0.5rem',
     full: '9999px',
@@ -55,4 +65,14 @@ export const theme = {
   },
 } as const
 
-export type AppTheme = typeof theme
+// Widened from the literal `as const` values so user settings can swap in
+// any color at runtime.
+type Widen<T> = {
+  [K in keyof T]: T[K] extends string
+    ? string
+    : T[K] extends number
+      ? number
+      : Widen<T[K]>
+}
+
+export type AppTheme = Widen<typeof theme>

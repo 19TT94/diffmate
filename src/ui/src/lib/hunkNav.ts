@@ -20,3 +20,17 @@ export function findNextPendingHunkId(
   }
   return null
 }
+
+// Prev/Next in review order, crossing file boundaries; null at either end
+// of the review.
+export function adjacentHunkIds(
+  hunks: Hunk[],
+  currentId: string,
+): { prev: string | null; next: string | null } {
+  const index = hunks.findIndex((hunk) => hunk.id === currentId)
+  if (index === -1) return { prev: null, next: null }
+  return {
+    prev: hunks[index - 1]?.id ?? null,
+    next: hunks[index + 1]?.id ?? null,
+  }
+}

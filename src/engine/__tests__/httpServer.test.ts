@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { get } from 'node:http'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -266,5 +266,132 @@ test('GET /api/events streams session bus events as SSE', async () => {
 
     assert.match(received, /event: hunk_updated/)
     assert.match(received, /"hunkId":"a\.txt@@hunk1"/)
+  })
+})
+
+async function withSettingsServer(
+  run: (
+    apiUrl: (pathname: string) => string,
+    settingsPath: string,
+    port: number,
+  ) => Promise<void>,
+  settingsPath?: string,
+): Promise<void> {
+  const uiDir = await mkdtemp(path.join(tmpdir(), 'diffmate-ui-'))
+  const repoRoot = await mkdtemp(path.join(tmpdir(), 'diffmate-repo-'))
+  // Nested under a folder that doesn't exist yet, like a first run.
+  const file =
+    settingsPath ??
+    path.join(
+      await mkdtemp(path.join(tmpdir(), 'diffmate-config-')),
+      'diffmate',
+      'settings.json',
+    )
+  const session = new ReviewSession('cli', {}, fixtureFiles())
+  const server = await startReviewServer(session, uiDir, repoRoot, {
+    settingsPath: file,
+  })
+  const apiUrl = (pathname: string): string =>
+    `http://127.0.0.1:${server.port}${pathname}?token=${server.token}`
+  try {
+    await run(apiUrl, file, server.port)
+  } finally {
+    await server.close()
+  }
+}
+
+function patchSettings(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+test('GET /api/settings returns {} when no settings file exists', async () => {
+  await withSettingsServer(async (apiUrl) => {
+    const res = await fetch(apiUrl('/api/settings'))
+    assert.equal(res.status, 200)
+    assert.deepEqual(await res.json(), {})
+  })
+})
+
+test('PATCH /api/settings creates the file and a new server reads it back', async () => {
+  let file = ''
+  await withSettingsServer(async (apiUrl, settingsPath) => {
+    file = settingsPath
+    const res = await patchSettings(apiUrl('/api/settings'), {
+      colors: { agent: '#f06543' },
+    })
+    assert.equal(res.status, 200)
+    assert.deepEqual(await res.json(), { colors: { agent: '#f06543' } })
+  })
+
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), {
+    colors: { agent: '#f06543' },
+  })
+  await withSettingsServer(async (apiUrl) => {
+    const res = await fetch(apiUrl('/api/settings'))
+    assert.deepEqual(await res.json(), { colors: { agent: '#f06543' } })
+  }, file)
+})
+
+test('PATCH /api/settings merges, and null removes a field', async () => {
+  await withSettingsServer(async (apiUrl) => {
+    await patchSettings(apiUrl('/api/settings'), {
+      colors: { agent: '#f06543', primary: '#0969da' },
+    })
+    const merged = await patchSettings(apiUrl('/api/settings'), {
+      fileListWidth: 320,
+    })
+    assert.deepEqual(await merged.json(), {
+      colors: { agent: '#f06543', primary: '#0969da' },
+      fileListWidth: 320,
+    })
+
+    const cleared = await patchSettings(apiUrl('/api/settings'), {
+      colors: { agent: null },
+      fileListWidth: null,
+    })
+    assert.deepEqual(await cleared.json(), { colors: { primary: '#0969da' } })
+  })
+})
+
+test('PATCH /api/settings 400s for invalid values and writes nothing', async () => {
+  await withSettingsServer(async (apiUrl, settingsPath) => {
+    for (const body of [
+      { colors: { agent: 'orange' } },
+      { colors: { primary: '#12345' } },
+      { colors: { diffAddIntensity: 1.5 } },
+      { colors: { diffDelIntensity: 'strong' } },
+      { fileListWidth: 0 },
+      { fileListWidth: '300' },
+      { colors: { mystery: '#000000' } },
+      { theme: 'dark' },
+      [1, 2],
+    ]) {
+      const res = await patchSettings(apiUrl('/api/settings'), body)
+      assert.equal(res.status, 400, JSON.stringify(body))
+    }
+    await assert.rejects(readFile(settingsPath, 'utf8'), { code: 'ENOENT' })
+  })
+})
+
+test('/api/settings requires the session token', async () => {
+  await withSettingsServer(async (_apiUrl, settingsPath, port) => {
+    const url = `http://127.0.0.1:${port}/api/settings`
+    assert.equal((await fetch(url)).status, 403)
+    const res = await patchSettings(url, { fileListWidth: 300 })
+    assert.equal(res.status, 403)
+    await assert.rejects(readFile(settingsPath, 'utf8'), { code: 'ENOENT' })
+  })
+})
+
+test('an empty PATCH /api/settings writes nothing', async () => {
+  await withSettingsServer(async (apiUrl, settingsPath) => {
+    const res = await patchSettings(apiUrl('/api/settings'), {})
+    assert.equal(res.status, 200)
+    assert.deepEqual(await res.json(), {})
+    await assert.rejects(readFile(settingsPath, 'utf8'), { code: 'ENOENT' })
   })
 })

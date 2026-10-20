@@ -10,10 +10,11 @@ import { TopBar } from './components/TopBar'
 
 // Hooks
 import { flattenHunks, useReviewSession } from './hooks/useReviewSession'
+import { useSettings } from './hooks/useSettings'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 // Utils
-import { findNextPendingHunkId } from './lib/hunkNav'
+import { adjacentHunkIds, findNextPendingHunkId } from './lib/hunkNav'
 
 // Types
 import type { DiffLayout, HunkStatus, ReviewFile } from './types'
@@ -26,7 +27,8 @@ const App = () => {
     setHunkStatus,
     submitReview,
   } = useReviewSession()
-  const [diffLayout, setDiffLayout] = useState<DiffLayout>('stacked')
+  const [diffLayout, setDiffLayout] = useState<DiffLayout>('side-by-side')
+  const { settings, updateSettings } = useSettings()
 
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =
@@ -36,6 +38,12 @@ const App = () => {
   )
   const currentEntry = currentIndex === -1 ? null : flatHunks[currentIndex]!
   const currentPath = currentEntry?.file.path ?? null
+  const { prev: prevHunkId, next: nextHunkId } = currentEntry
+    ? adjacentHunkIds(
+        flatHunks.map((entry) => entry.hunk),
+        currentEntry.hunk.id,
+      )
+    : { prev: null, next: null }
 
   function onSelectFile(index: number): void {
     const firstHunkId = hunkIdsByFile[index]?.[0]
@@ -89,37 +97,29 @@ const App = () => {
         reviewComplete={session.reviewComplete}
         onSubmit={submitReview}
       />
-      <AgentContext
-        mode={session.mode}
-        title={session.title}
-        summary={session.summary}
-      />
       <Layout>
         <FileList
           files={session.files}
           currentPath={currentPath}
           onSelectFile={onSelectFile}
           onBulkSetStatus={handleBulkSetStatus}
+          width={settings.fileListWidth}
+          onWidthChange={(width) => updateSettings({ fileListWidth: width })}
         />
         <FileView>
+          <AgentContext
+            mode={session.mode}
+            title={session.title}
+            summary={session.summary}
+          />
           {session.files.length === 0 ? (
             <EmptyState>No changes to review.</EmptyState>
           ) : currentEntry ? (
             <HunkStepper
               file={currentEntry.file}
               hunk={currentEntry.hunk}
-              index={currentIndex}
-              total={flatHunks.length}
-              onPrev={
-                currentIndex > 0
-                  ? () => setFocusedHunkId(flatHunks[currentIndex - 1]!.hunk.id)
-                  : null
-              }
-              onNext={
-                currentIndex < flatHunks.length - 1
-                  ? () => setFocusedHunkId(flatHunks[currentIndex + 1]!.hunk.id)
-                  : null
-              }
+              onPrev={prevHunkId ? () => setFocusedHunkId(prevHunkId) : null}
+              onNext={nextHunkId ? () => setFocusedHunkId(nextHunkId) : null}
               onSetStatus={handleSetStatus}
               layout={diffLayout}
               onLayoutChange={setDiffLayout}

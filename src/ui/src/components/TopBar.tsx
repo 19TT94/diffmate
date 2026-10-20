@@ -2,6 +2,7 @@ import styled from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
+import { SettingsMenu } from './SettingsMenu'
 
 // Types
 import type { FlatHunk } from '../hooks/useReviewSession'
@@ -36,6 +37,7 @@ export function TopBar({ hunks, reviewComplete, onSubmit }: TopBarProps) {
       <Button variant="primary" disabled={reviewComplete} onClick={onSubmit}>
         Submit review (⌘↵)
       </Button>
+      <SettingsMenu />
     </Bar>
   )
 }

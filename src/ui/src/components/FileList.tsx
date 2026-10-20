@@ -1,21 +1,40 @@
 import { useState } from 'react'
-import styled from 'styled-components'
+import type { MouseEvent as ReactMouseEvent } from 'react'
+import styled, { css } from 'styled-components'
 
 // Components
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 
 // Utils
-import { fileBadgeStatus, fileLineStats } from '../lib/summary'
+import { clampWidth, startDragResize } from '../lib/dragResize'
+import {
+  fileBadgeStatus,
+  fileLineStats,
+  reviewedCount,
+  splitPath,
+} from '../lib/summary'
 
 // Types
 import type { HunkStatus, ReviewFile } from '../types'
+
+const DEFAULT_WIDTH = 280
+const MIN_WIDTH = 220
+const MAX_WIDTH = 480
+
+function displayWidth(saved: number | undefined): number {
+  return clampWidth(saved ?? DEFAULT_WIDTH, MIN_WIDTH, MAX_WIDTH)
+}
 
 interface FileListProps {
   files: ReviewFile[]
   currentPath: string | null
   onSelectFile: (index: number) => void
   onBulkSetStatus: (file: ReviewFile, status: HunkStatus) => void
+  // The saved width (from settings); undefined means the default.
+  width?: number
+  // Called once per drag, when it ends, to save the new width.
+  onWidthChange: (width: number) => void
 }
 
 export function FileList({
@@ -23,12 +42,35 @@ export function FileList({
   currentPath,
   onSelectFile,
   onBulkSetStatus,
+  width: savedWidth,
+  onWidthChange,
 }: FileListProps) {
   // Simplest possible collapse for now — local, not persisted, no animation.
   const [collapsed, setCollapsed] = useState(false)
+  const [width, setWidth] = useState(() => displayWidth(savedWidth))
+  // Saved settings arrive after the first render; follow them when they do.
+  const [lastSaved, setLastSaved] = useState(savedWidth)
+  if (savedWidth !== lastSaved) {
+    setLastSaved(savedWidth)
+    setWidth(displayWidth(savedWidth))
+  }
+
+  function handleResizeStart(event: ReactMouseEvent): void {
+    startDragResize(event, {
+      startWidth: width,
+      min: MIN_WIDTH,
+      max: MAX_WIDTH,
+      onChange: setWidth,
+      onEnd: onWidthChange,
+    })
+  }
 
   return (
-    <Nav aria-label="Changed files" $collapsed={collapsed}>
+    <Nav
+      aria-label="Changed files"
+      $collapsed={collapsed}
+      style={collapsed ? undefined : { width }}
+    >
       <ToggleButton
         variant="secondary"
         size="sm"
@@ -39,24 +81,38 @@ export function FileList({
         {collapsed ? '›' : '‹'}
       </ToggleButton>
       {collapsed ? null : (
+        <Resizer
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize file list"
+          onMouseDown={handleResizeStart}
+        />
+      )}
+      {collapsed ? null : (
         <List>
           {files.map((file, index) => {
             const { add, del } = fileLineStats(file)
-            const lastSlash = file.path.lastIndexOf('/')
-            const dir =
-              lastSlash === -1 ? null : file.path.slice(0, lastSlash + 1)
-            const name =
-              lastSlash === -1 ? file.path : file.path.slice(lastSlash + 1)
+            const { dir, name } = splitPath(file.path)
+            const badgeStatus = fileBadgeStatus(file)
             return (
               <Item
                 key={file.path}
                 $current={file.path === currentPath}
                 onClick={() => onSelectFile(index)}
               >
-                <Badge status={fileBadgeStatus(file)} />
+                <Badge
+                  status={badgeStatus}
+                  detail={
+                    badgeStatus === 'mixed'
+                      ? `(${reviewedCount(file.hunks)} of ${file.hunks.length})`
+                      : undefined
+                  }
+                />
                 <Path title={file.path}>
-                  {dir && <Dir>{dir}</Dir>}
-                  <Name>{name}</Name>
+                  <bdi>
+                    {dir && <Dir>{dir}</Dir>}
+                    <Name>{name}</Name>
+                  </bdi>
                 </Path>
                 <Stat>
                   <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
@@ -102,8 +158,11 @@ const Nav = styled.nav<{ $collapsed: boolean }>`
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: ${({ $collapsed, theme }) =>
-    $collapsed ? theme.spacing[2] : '280px'};
+  ${({ $collapsed, theme }) =>
+    $collapsed &&
+    css`
+      width: ${theme.spacing[2]};
+    `}
   flex: none;
   overflow: visible;
   border-right: 1px solid ${({ theme }) => theme.colors.border};
@@ -117,11 +176,25 @@ const List = styled.div`
   padding-right: ${({ theme }) => theme.spacing[3]};
 `
 
+// Straddles the right border; the toggle button sits above it.
+const Resizer = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: 6px;
+  cursor: col-resize;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.primary};
+  }
+`
+
 const ToggleButton = styled(Button)`
   position: absolute;
   top: ${({ theme }) => theme.spacing[3]};
   right: 0;
-  z-index: 1;
+  z-index: 2;
   width: ${({ theme }) => theme.spacing[4]};
   height: ${({ theme }) => theme.spacing[4]};
   padding: 0;
@@ -169,25 +242,25 @@ const Item = styled.div<{ $current: boolean }>`
   }
 `
 
+// Trims the whole path from the front ("…ui/Button.tsx") so the file name
+// stays visible: rtl puts the ellipsis on the left (text-align keeps a path
+// that fits flush left), and <bdi> keeps the path itself in its own order.
 const Path = styled.span`
   flex: 1;
   min-width: 0;
-  display: flex;
-  align-items: baseline;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
   font-family: ${({ theme }) => theme.fonts.mono};
 `
 
 const Dir = styled.span`
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: ${({ theme }) => theme.colors.muted};
 `
 
 const Name = styled.span`
-  flex: none;
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
   color: ${({ theme }) => theme.colors.secondary};
 `

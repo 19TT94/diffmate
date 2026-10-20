@@ -1,18 +1,17 @@
-import type { MouseEvent as ReactMouseEvent } from 'react'
-import styled, { css } from 'styled-components'
+import styled from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
+import { Panel, PanelText } from './ui/Panel'
 import { ViewModeToggle } from './ui/ViewModeToggle'
-import { DiffSide } from './DiffSide'
 import { FileEditor } from './FileEditor'
 import { SideBySideDiff } from './SideBySideDiff'
 
+// Utils
+import { splitPath } from '../lib/summary'
+
 // Types
 import type { DiffLayout, Hunk, HunkStatus } from '../types'
-
-const MIN_OLD_WIDTH = 120
-const MAX_OLD_WIDTH = 600
 
 interface HunkViewProps {
   hunk: Hunk
@@ -24,12 +23,17 @@ interface HunkViewProps {
   fileContent: string | null
   fileContentError: string | null
   fileContentLoading: boolean
-  oldColumnWidth: number
-  onOldColumnWidthChange: (width: number) => void
+  // Side-by-side columns or one inline diff.
   layout: DiffLayout
   onLayoutChange: (layout: DiffLayout) => void
+  onPrev: (() => void) | null
+  onNext: (() => void) | null
+  // Zero-based position of this hunk within its file.
+  position: { index: number; total: number }
 }
 
+// A borderless toolbar over the hunk's summary, then two separate bordered
+// panels: the diff (old vs new, one scrollbar) and the whole-file editor.
 export function HunkView({
   hunk,
   filePath,
@@ -40,30 +44,12 @@ export function HunkView({
   fileContent,
   fileContentError,
   fileContentLoading,
-  oldColumnWidth,
-  onOldColumnWidthChange,
   layout,
   onLayoutChange,
+  onPrev,
+  onNext,
+  position,
 }: HunkViewProps) {
-  function handleResizeStart(event: ReactMouseEvent): void {
-    event.preventDefault()
-    const startX = event.clientX
-    const startWidth = oldColumnWidth
-
-    function handleMouseMove(moveEvent: MouseEvent): void {
-      const next = startWidth + (moveEvent.clientX - startX)
-      onOldColumnWidthChange(
-        Math.min(Math.max(next, MIN_OLD_WIDTH), MAX_OLD_WIDTH),
-      )
-    }
-    function handleMouseUp(): void {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }
-
   const newSide = fileContentLoading ? (
     <Placeholder>Loading file…</Placeholder>
   ) : fileContentError ? (
@@ -81,8 +67,31 @@ export function HunkView({
 
   return (
     <Container id={`hunk-${hunk.id}`} $focused={isFocused} onClick={onFocus}>
-      <Toolbar>
-        <Header>{hunk.header}</Header>
+      <Toolbar role="toolbar" aria-label="Hunk actions">
+        <FileName title={filePath}>{splitPath(filePath).name}</FileName>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Previous hunk"
+          title="Previous hunk"
+          disabled={!onPrev}
+          onClick={() => onPrev?.()}
+        >
+          ‹
+        </Button>
+        <Position>
+          {position.index + 1} of {position.total}
+        </Position>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Next hunk"
+          title="Next hunk"
+          disabled={!onNext}
+          onClick={() => onNext?.()}
+        >
+          ›
+        </Button>
         <Button
           size="sm"
           variant="primary"
@@ -106,41 +115,33 @@ export function HunkView({
         >
           Reset
         </Button>
-        <ViewModeToggle layout={layout} onLayoutChange={onLayoutChange} />
       </Toolbar>
 
       {hunk.summary !== null && (
-        <Summary>
-          <SummaryLabel>Summary</SummaryLabel>
-          <SummaryText>{hunk.summary}</SummaryText>
-        </Summary>
+        <Panel
+          tone="agent"
+          badge="agent"
+          name="explanation"
+          title="Explanation"
+        >
+          <PanelText>{hunk.summary}</PanelText>
+        </Panel>
       )}
 
-      <Rows
-        $stacked={layout === 'stacked'}
-        style={
-          layout === 'stacked'
-            ? undefined
-            : { gridTemplateColumns: `${oldColumnWidth}px 6px 1fr` }
+      <DiffPanel
+        title="Diff"
+        name="diff"
+        expandable
+        actions={
+          <ViewModeToggle layout={layout} onLayoutChange={onLayoutChange} />
         }
       >
-        {layout === 'stacked' ? (
-          <>
-            <DiffPane>
-              <SideBySideDiff hunk={hunk} filePath={filePath} />
-            </DiffPane>
-            <NewSide>{newSide}</NewSide>
-          </>
-        ) : (
-          <>
-            <OldSide>
-              <DiffSide hunk={hunk} filePath={filePath} />
-            </OldSide>
-            <Resizer onMouseDown={handleResizeStart} />
-            <NewSide>{newSide}</NewSide>
-          </>
-        )}
-      </Rows>
+        <SideBySideDiff hunk={hunk} filePath={filePath} layout={layout} />
+      </DiffPanel>
+
+      <EditorPanel title="File" name="file" expandable>
+        {newSide}
+      </EditorPanel>
     </Container>
   )
 }
@@ -151,105 +152,46 @@ const Container = styled.div<{ $focused: boolean }>`
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.radii.md};
-  overflow: hidden;
+  gap: ${({ theme }) => theme.spacing[3]};
   outline: ${({ $focused, theme }) => ($focused ? `2px solid ${theme.colors.primary}` : 'none')};
-  outline-offset: -1px;
+  outline-offset: 2px;
 `
 
+// No border or fill: it spans the column and reads as the hunk's header.
 const Toolbar = styled.div`
+  flex: none;
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing[2]};
-  padding: ${({ theme }) => theme.spacing[2]} ${({ theme }) => theme.spacing[3]};
-  background: ${({ theme }) => theme.colors.background};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   font-family: ${({ theme }) => theme.fonts.mono};
   font-size: ${({ theme }) => theme.fontSizes.xs};
 `
 
-const Header = styled.span`
-  color: ${({ theme }) => theme.colors.muted};
+const FileName = styled.span`
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`
-
-const Summary = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing[1]};
-  padding: ${({ theme }) => theme.spacing[3]};
-  background: ${({ theme }) => theme.colors.tertiary};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-`
-
-const SummaryLabel = styled.span`
-  font-family: ${({ theme }) => theme.fonts.body};
-  font-size: ${({ theme }) => theme.fontSizes.xs};
   font-weight: ${({ theme }) => theme.fontWeights.semibold};
-  color: ${({ theme }) => theme.colors.muted};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-`
-
-const SummaryText = styled.p`
-  margin: 0;
-  font-family: ${({ theme }) => theme.fonts.body};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  line-height: 1.45;
   color: ${({ theme }) => theme.colors.secondary};
-  white-space: pre-wrap;
 `
 
-// Stacked puts a side-by-side hunk comparison across the top with the file
-// below; side-by-side puts the old strip and the file in columns split by a
-// draggable gutter. grid-template-rows uses minmax(0, 1fr) so a row can
-// actually shrink instead of growing to fit content.
-const Rows = styled.div<{ $stacked: boolean }>`
+const Position = styled.span`
+  flex: none;
+  color: ${({ theme }) => theme.colors.muted};
+  white-space: nowrap;
+`
+
+// Sized to its content up to 45% of the column; the editor takes the rest.
+const DiffPanel = styled(Panel)`
+  flex: 0 1 auto;
+  max-height: 45%;
+`
+
+const EditorPanel = styled(Panel)`
   flex: 1;
-  min-height: 0;
-  display: grid;
-  ${({ $stacked }) =>
-    $stacked
-      ? css`
-          grid-template-rows: minmax(0, 40%) 1fr;
-        `
-      : css`
-          grid-template-rows: minmax(0, 1fr);
-        `}
-`
-
-const OldSide = styled.div`
-  min-height: 0;
-  overflow: hidden;
-`
-
-const DiffPane = styled.div`
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-`
-
-const Resizer = styled.div`
-  cursor: col-resize;
-  background: ${({ theme }) => theme.colors.border};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-  }
-`
-
-const NewSide = styled.div`
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  min-height: 8rem;
 `
 
 const Placeholder = styled.div`

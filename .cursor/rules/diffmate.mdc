@@ -56,10 +56,11 @@ Use only the groups a file needs.
   `EventEmitter`-based pub/sub, not a single resolve-once promise — phase
   2's MCP `wait_for_activity` subscribes to the same bus phase 1's CLI uses
   for `review_complete`. Never rework `session.ts` to special-case one mode.
-- diffmate never mutates git state or files on its own. "Approve" and
+- A review never mutates git state or the repo's files. "Approve" and
   "reject" are signals only, consumed by whichever agent reads the
   structured output — make this explicit in any UI copy or tool
-  description you touch.
+  description you touch. The only file a review writes is diffmate's own
+  settings file outside the repo (`~/.config/diffmate/settings.json`).
 - Bind the local HTTP server to `127.0.0.1` only, with a random session
   token embedded in the served URL.
 
