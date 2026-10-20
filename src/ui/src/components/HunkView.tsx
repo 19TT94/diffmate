@@ -5,7 +5,7 @@ import { Button } from './ui/Button'
 import { Panel, PanelText } from './ui/Panel'
 import { ViewModeToggle } from './ui/ViewModeToggle'
 import { FileEditor } from './FileEditor'
-import { SideBySideDiff } from './SideBySideDiff'
+import { HunkDiff } from './HunkDiff'
 
 // Utils
 import { splitPath } from '../lib/summary'
@@ -136,7 +136,7 @@ export function HunkView({
           <ViewModeToggle layout={layout} onLayoutChange={onLayoutChange} />
         }
       >
-        <SideBySideDiff hunk={hunk} filePath={filePath} layout={layout} />
+        <HunkDiff hunk={hunk} filePath={filePath} layout={layout} />
       </DiffPanel>
 
       <EditorPanel title="File" name="file" expandable>

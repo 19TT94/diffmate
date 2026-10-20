@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 // Components
-import { SideBySideDiff } from '../SideBySideDiff'
+import { HunkDiff } from '../HunkDiff'
 
 // Utils
 import { renderWithTheme } from '../../test/render'
@@ -47,14 +47,10 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
   }
 }
 
-describe('SideBySideDiff', () => {
+describe('HunkDiff', () => {
   it('prints deletions in the left column and additions on the right', async () => {
     renderWithTheme(
-      <SideBySideDiff
-        hunk={fixtureHunk()}
-        filePath="a.ts"
-        layout="side-by-side"
-      />,
+      <HunkDiff hunk={fixtureHunk()} filePath="a.ts" layout="side-by-side" />,
     )
 
     await waitFor(() => {
@@ -74,7 +70,7 @@ describe('SideBySideDiff', () => {
 
   it('pads the old column with blank rows to line up with additions', async () => {
     renderWithTheme(
-      <SideBySideDiff
+      <HunkDiff
         hunk={fixtureHunk({
           lines: [
             {
@@ -112,7 +108,7 @@ describe('SideBySideDiff', () => {
 
   it('shows one inline pane with removed and added lines interleaved in order', async () => {
     renderWithTheme(
-      <SideBySideDiff hunk={fixtureHunk()} filePath="a.ts" layout="inline" />,
+      <HunkDiff hunk={fixtureHunk()} filePath="a.ts" layout="inline" />,
     )
 
     await waitFor(() => {
@@ -133,13 +129,13 @@ describe('SideBySideDiff', () => {
   it('switches between columns and the inline pane on a mounted diff', async () => {
     const hunk = fixtureHunk()
     const { rerender } = renderWithTheme(
-      <SideBySideDiff hunk={hunk} filePath="a.ts" layout="side-by-side" />,
+      <HunkDiff hunk={hunk} filePath="a.ts" layout="side-by-side" />,
     )
     await waitFor(() => {
       expect(document.querySelectorAll('.cm-content')).toHaveLength(2)
     })
 
-    rerender(<SideBySideDiff hunk={hunk} filePath="a.ts" layout="inline" />)
+    rerender(<HunkDiff hunk={hunk} filePath="a.ts" layout="inline" />)
 
     await waitFor(() => {
       expect(document.querySelectorAll('.cm-content')).toHaveLength(1)

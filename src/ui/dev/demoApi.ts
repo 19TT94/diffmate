@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 
+// Utils
+import { mergeSettings } from '../src/lib/settings.ts'
+
 // Types
 import type { Settings, SettingsPatch } from '../src/types.ts'
 
@@ -19,25 +22,6 @@ const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
 // (and starts from defaults on each restart). No validation: the real
 // engine checks values.
 let demoSettings: Settings = {}
-
-// A pared-down mergeSettings (src/lib/settings.ts can't be imported here
-// under the dev tsconfig's Node resolution): fields replace, null removes.
-function mergeDemoSettings(current: Settings, patch: SettingsPatch): Settings {
-  const colors: Record<string, unknown> = { ...current.colors }
-  for (const [key, value] of Object.entries(patch.colors ?? {})) {
-    if (value === null) delete colors[key]
-    else colors[key] = value
-  }
-  const next: Settings = { ...current, colors }
-  if (patch.colors === null || Object.keys(colors).length === 0) {
-    delete next.colors
-  }
-  if (patch.fileListWidth === null) delete next.fileListWidth
-  else if (patch.fileListWidth !== undefined) {
-    next.fileListWidth = patch.fileListWidth
-  }
-  return next
-}
 
 interface DemoHunk {
   id: string
@@ -131,7 +115,7 @@ async function handle(
   if (method === 'PATCH' && pathname === '/api/settings') {
     // Trusted dev-only input; see demoSettings above.
     const patch = (await readJsonBody(req)) as SettingsPatch
-    demoSettings = mergeDemoSettings(demoSettings, patch)
+    demoSettings = mergeSettings(demoSettings, patch)
     sendJson(res, 200, demoSettings)
     return
   }

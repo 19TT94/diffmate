@@ -10,7 +10,7 @@ import { buildSideBySideRows, sideBySideColumn } from '../lib/diff'
 // Types
 import type { DiffLayout, Hunk } from '../types'
 
-interface SideBySideDiffProps {
+interface HunkDiffProps {
   hunk: Hunk
   filePath: string
   layout: DiffLayout
@@ -22,11 +22,7 @@ interface SideBySideDiffProps {
 // one scroll container, so a single scrollbar moves them together. Inline is
 // a single pane of the hunk's own lines, interleaved with +/- gutter marks
 // and add/del tints, like a unified diff.
-export function SideBySideDiff({
-  hunk,
-  filePath,
-  layout,
-}: SideBySideDiffProps) {
+export function HunkDiff({ hunk, filePath, layout }: HunkDiffProps) {
   if (layout === 'inline') {
     return (
       <Scroll data-testid="diff-scroll" data-layout="inline">
