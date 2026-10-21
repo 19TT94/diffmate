@@ -65,10 +65,20 @@ const StyledBadge = styled.span<StyledBadgeProps>`
   ${({ $status }) => statusStyles[$status]}
 `
 
+const Detail = styled.span`
+  text-transform: none;
+`
+
 export interface BadgeProps {
   status: BadgeStatus
+  detail?: string
 }
 
-export function Badge({ status }: BadgeProps) {
-  return <StyledBadge $status={status}>{status}</StyledBadge>
+export function Badge({ status, detail }: BadgeProps) {
+  return (
+    <StyledBadge $status={status}>
+      {status}
+      {detail && <Detail> {detail}</Detail>}
+    </StyledBadge>
+  )
 }

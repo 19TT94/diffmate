@@ -12,23 +12,23 @@ describe('ViewModeToggle', () => {
     const user = userEvent.setup()
     const onLayoutChange = vi.fn()
     renderWithTheme(
-      <ViewModeToggle layout="stacked" onLayoutChange={onLayoutChange} />,
+      <ViewModeToggle layout="inline" onLayoutChange={onLayoutChange} />,
     )
 
-    const stacked = document.querySelector(
-      'button[title="Stack the diff above the file"]',
+    const inline = document.querySelector(
+      'button[title="Show one inline diff"]',
     ) as HTMLButtonElement
     const sideBySide = document.querySelector(
-      'button[title="Show the diff and file side by side"]',
+      'button[title="Show old and new side by side"]',
     ) as HTMLButtonElement
 
-    expect(stacked.getAttribute('aria-pressed')).toBe('true')
+    expect(inline.getAttribute('aria-pressed')).toBe('true')
     expect(sideBySide.getAttribute('aria-pressed')).toBe('false')
 
     await user.click(sideBySide)
     expect(onLayoutChange).toHaveBeenCalledWith('side-by-side')
 
-    await user.click(stacked)
-    expect(onLayoutChange).toHaveBeenCalledWith('stacked')
+    await user.click(inline)
+    expect(onLayoutChange).toHaveBeenCalledWith('inline')
   })
 })

@@ -1,4 +1,3 @@
-import { fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -56,24 +55,67 @@ function findButton(text: string): HTMLElement {
   )!
 }
 
+function findLabeled(label: string): HTMLElement {
+  return document.querySelector(`button[aria-label="${label}"]`)!
+}
+
 describe('HunkStepper', () => {
-  it('renders the file path and progress readout', () => {
+  it('shows no separate full-path header', () => {
     renderWithTheme(
       <HunkStepper
-        file={fixtureFile()}
+        file={fixtureFile({ path: 'src/a.txt' })}
         hunk={fixtureHunk()}
-        index={2}
-        total={5}
         onPrev={null}
         onNext={null}
         onSetStatus={() => {}}
-        layout="stacked"
+        layout="side-by-side"
         onLayoutChange={() => {}}
       />,
     )
 
-    expect(document.body.textContent).toContain('a.txt')
-    expect(document.body.textContent).toContain('3 of 5')
+    expect(document.body.textContent).not.toContain('src/a.txt')
+  })
+
+  it('puts Prev/Next in the hunk toolbar with Approve, and drops the bottom nav', () => {
+    renderWithTheme(
+      <HunkStepper
+        file={fixtureFile()}
+        hunk={fixtureHunk()}
+        onPrev={() => {}}
+        onNext={() => {}}
+        onSetStatus={() => {}}
+        layout="side-by-side"
+        onLayoutChange={() => {}}
+      />,
+    )
+
+    const toolbar = document.querySelector('[role="toolbar"]')!
+    expect(toolbar.contains(findLabeled('Previous hunk'))).toBe(true)
+    expect(toolbar.contains(findLabeled('Next hunk'))).toBe(true)
+    expect(toolbar.contains(findButton('Approve'))).toBe(true)
+    expect(document.querySelectorAll('[aria-label="Next hunk"]')).toHaveLength(
+      1,
+    )
+  })
+
+  it("shows the hunk's position within its file between Prev and Next", () => {
+    const h1 = fixtureHunk({ id: 'h1' })
+    const h2 = fixtureHunk({ id: 'h2' })
+    renderWithTheme(
+      <HunkStepper
+        file={fixtureFile({ hunks: [h1, h2] })}
+        hunk={h2}
+        onPrev={() => {}}
+        onNext={null}
+        onSetStatus={() => {}}
+        layout="side-by-side"
+        onLayoutChange={() => {}}
+      />,
+    )
+
+    const position = findLabeled('Previous hunk').nextElementSibling
+    expect(position?.textContent).toBe('2 of 2')
+    expect(position?.nextElementSibling).toBe(findLabeled('Next hunk'))
   })
 
   it('calls onSetStatus with the hunk id when Approve is clicked', async () => {
@@ -83,12 +125,10 @@ describe('HunkStepper', () => {
       <HunkStepper
         file={fixtureFile()}
         hunk={fixtureHunk({ id: 'h1' })}
-        index={0}
-        total={1}
         onPrev={null}
         onNext={null}
         onSetStatus={onSetStatus}
-        layout="stacked"
+        layout="side-by-side"
         onLayoutChange={() => {}}
       />,
     )
@@ -106,18 +146,16 @@ describe('HunkStepper', () => {
       <HunkStepper
         file={fixtureFile()}
         hunk={fixtureHunk()}
-        index={0}
-        total={1}
         onPrev={onPrev}
         onNext={onNext}
         onSetStatus={() => {}}
-        layout="stacked"
+        layout="side-by-side"
         onLayoutChange={() => {}}
       />,
     )
 
-    await user.click(findButton('‹ Prev'))
-    await user.click(findButton('Next ›'))
+    await user.click(findLabeled('Previous hunk'))
+    await user.click(findLabeled('Next hunk'))
 
     expect(onPrev).toHaveBeenCalledTimes(1)
     expect(onNext).toHaveBeenCalledTimes(1)
@@ -128,52 +166,7 @@ describe('HunkStepper', () => {
       <HunkStepper
         file={fixtureFile()}
         hunk={fixtureHunk()}
-        index={0}
-        total={1}
         onPrev={null}
-        onNext={null}
-        onSetStatus={() => {}}
-        layout="stacked"
-        onLayoutChange={() => {}}
-      />,
-    )
-
-    expect(findButton('‹ Prev')).toBeDisabled()
-    expect(findButton('Next ›')).toBeDisabled()
-  })
-
-  it('keeps a resized old-column width when stepping to a different hunk', () => {
-    const { container, rerender } = renderWithTheme(
-      <HunkStepper
-        file={fixtureFile()}
-        hunk={fixtureHunk({ id: 'h1' })}
-        index={0}
-        total={2}
-        onPrev={null}
-        onNext={() => {}}
-        onSetStatus={() => {}}
-        layout="side-by-side"
-        onLayoutChange={() => {}}
-      />,
-    )
-
-    const resizer = container.querySelector('[style*="grid-template-columns"]')!
-      .children[1] as HTMLElement
-    fireEvent.mouseDown(resizer, { clientX: 100 })
-    fireEvent.mouseMove(document, { clientX: 200 })
-
-    const rowsBefore = container.querySelector(
-      '[style*="grid-template-columns"]',
-    )!
-    expect(rowsBefore.getAttribute('style')).toContain('320px')
-
-    rerender(
-      <HunkStepper
-        file={fixtureFile()}
-        hunk={fixtureHunk({ id: 'h2' })}
-        index={1}
-        total={2}
-        onPrev={() => {}}
         onNext={null}
         onSetStatus={() => {}}
         layout="side-by-side"
@@ -181,9 +174,7 @@ describe('HunkStepper', () => {
       />,
     )
 
-    const rowsAfter = container.querySelector(
-      '[style*="grid-template-columns"]',
-    )!
-    expect(rowsAfter.getAttribute('style')).toContain('320px')
+    expect(findLabeled('Previous hunk')).toBeDisabled()
+    expect(findLabeled('Next hunk')).toBeDisabled()
   })
 })

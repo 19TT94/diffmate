@@ -7,6 +7,12 @@ import path from 'node:path'
 // Engine
 import { readFileContent } from './git.js'
 import type { ReviewSession } from './session.js'
+import {
+  parseSettingsPatch,
+  readSettings,
+  settingsFilePath,
+  updateSettings,
+} from './settings.js'
 
 // Types
 import type { HunkStatus } from './types.js'
@@ -24,6 +30,7 @@ const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
 const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
 const FILE_CONTENT_PATH = '/api/files/content'
+const SETTINGS_PATH = '/api/settings'
 
 // Events the browser's SSE connection forwards from the session bus. Kept as
 // an explicit allowlist so the stream only ever carries known event shapes.
@@ -45,15 +52,30 @@ export interface ReviewServer {
   close: () => Promise<void>
 }
 
+export interface ReviewServerOptions {
+  // Defaults to the user's real settings file; tests point it elsewhere.
+  settingsPath?: string
+}
+
 export async function startReviewServer(
   session: ReviewSession,
   uiDir: string,
   repoRoot: string,
+  options: ReviewServerOptions = {},
 ): Promise<ReviewServer> {
   const token = randomUUID()
+  const settingsPath = options.settingsPath ?? settingsFilePath()
 
   const server = createServer((req, res) => {
-    handleRequest(req, res, session, token, uiDir, repoRoot).catch((error) => {
+    handleRequest(
+      req,
+      res,
+      session,
+      token,
+      uiDir,
+      repoRoot,
+      settingsPath,
+    ).catch((error) => {
       if (!res.headersSent) {
         sendJson(res, 500, {
           error: error instanceof Error ? error.message : String(error),
@@ -94,6 +116,7 @@ async function handleRequest(
   token: string,
   uiDir: string,
   repoRoot: string,
+  settingsPath: string,
 ): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const { pathname } = url
@@ -190,6 +213,22 @@ async function handleRequest(
       }
       const content = await readFileContent(repoRoot, relPath, session.scope)
       sendJson(res, 200, { content })
+      return
+    }
+
+    if (method === 'GET' && pathname === SETTINGS_PATH) {
+      sendJson(res, 200, await readSettings(settingsPath))
+      return
+    }
+
+    if (method === 'PATCH' && pathname === SETTINGS_PATH) {
+      const patch = parseSettingsPatch(await readJsonBody(req))
+      // Nothing to change: don't create or rewrite the file.
+      const settings =
+        Object.keys(patch).length === 0
+          ? await readSettings(settingsPath)
+          : await updateSettings(settingsPath, patch)
+      sendJson(res, 200, settings)
       return
     }
 

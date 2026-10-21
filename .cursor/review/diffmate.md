@@ -42,6 +42,7 @@ Applied by the global `code-review` skill (and Claude's built-in `/code-review`)
   in `engine/`, not duplicated across entry points.
 - **Event bus stays generic** — no CLI-only or MCP-only special-casing in
   `session.ts`.
-- **Approve/reject is a signal, not an action** — diffmate never mutates
-  files or runs git commands beyond reading diffs.
+- **Approve/reject is a signal, not an action** — a review never mutates
+  the repo's files or runs git commands beyond reading diffs. Its only
+  write is diffmate's own settings file outside the repo.
 - **MCP tool shapes match `docs/PLAN.md`** exactly if `mcp/tools.ts` changed.

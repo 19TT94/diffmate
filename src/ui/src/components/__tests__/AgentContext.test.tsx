@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 // Components
@@ -30,6 +31,32 @@ describe('AgentContext', () => {
 
     expect(getByText('Just a summary.')).toBeTruthy()
     expect(queryByText('agent')).toBeTruthy()
+  })
+
+  it('collapses the summary and keeps the title visible, then expands again', async () => {
+    const user = userEvent.setup()
+    const { getByRole, getByText } = renderWithTheme(
+      <AgentContext mode="mcp" title="My change" summary="Why it exists." />,
+    )
+
+    const toggle = getByRole('button', { name: 'Collapse summary' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(toggle)
+    expect(getByText('Why it exists.')).not.toBeVisible()
+    expect(getByText('My change')).toBeTruthy()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(getByRole('button', { name: 'Expand summary' }))
+    expect(getByText('Why it exists.')).toBeVisible()
+  })
+
+  it('has no collapse toggle when there is only a title', () => {
+    const { queryByRole } = renderWithTheme(
+      <AgentContext mode="mcp" title="Only a title" summary={null} />,
+    )
+
+    expect(queryByRole('button')).toBeNull()
   })
 
   it('hides entirely for CLI sessions', () => {

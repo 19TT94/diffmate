@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import styled from 'styled-components'
+import styled, { useTheme } from 'styled-components'
 
 // CodeMirror
 import {
@@ -8,7 +8,7 @@ import {
   indentWithTab,
 } from '@codemirror/commands'
 import { searchKeymap } from '@codemirror/search'
-import { EditorState, Text } from '@codemirror/state'
+import { Compartment, EditorState, Prec, Text } from '@codemirror/state'
 import type { Extension } from '@codemirror/state'
 import {
   EditorView,
@@ -18,7 +18,7 @@ import {
 } from '@codemirror/view'
 
 // Utils
-import { cmHighlightTheme } from '../lib/cmTheme'
+import { cmDiffTintTheme, cmHighlightTheme } from '../lib/cmTheme'
 import { languageExtensionFromPath } from '../lib/cmLanguage'
 import {
   reviewSpanField,
@@ -60,6 +60,8 @@ export function CodeEditor({
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onDocChangedRef = useRef(onDocChanged)
+  const diffTintRef = useRef(new Compartment())
+  const { diffAddBg, diffDelBg } = useTheme().colors
 
   useEffect(() => {
     onDocChangedRef.current = onDocChanged
@@ -74,6 +76,8 @@ export function CodeEditor({
       : Text.of(content!.split('\n'))
     const extensions: Extension[] = [
       cmHighlightTheme(),
+      // Mount-time tints; the reconfigure effect below tracks later changes.
+      diffTintRef.current.of(cmDiffTintTheme({ diffAddBg, diffDelBg })),
       languageExtensionFromPath(filePath),
       EditorView.lineWrapping,
       keymap.of([
@@ -83,6 +87,14 @@ export function CodeEditor({
       ...(readOnly
         ? [
             EditorState.readOnly.of(true),
+            // Diff panes grow to their content; the diff panel scrolls both
+            // together with one scrollbar.
+            Prec.highest(
+              EditorView.theme({
+                '&': { height: 'auto' },
+                '.cm-scroller': { overflow: 'visible' },
+              }),
+            ),
             EditorView.editable.of(false),
             EditorView.contentAttributes.of({ 'aria-readonly': 'true' }),
           ]
@@ -130,6 +142,14 @@ export function CodeEditor({
     // component via its key, so a mount-only build is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filePath, mode, readOnly])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: diffTintRef.current.reconfigure(
+        cmDiffTintTheme({ diffAddBg, diffDelBg }),
+      ),
+    })
+  }, [diffAddBg, diffDelBg])
 
   useEffect(() => {
     if (readOnly) return

@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 
+// Utils
+import { mergeSettings } from '../src/lib/settings.ts'
+
+// Types
+import type { Settings, SettingsPatch } from '../src/types.ts'
+
 // Vite-dev-only stand-in for engine/httpServer.ts: same /api contract,
 // canned JSON session. Production `vite build` never loads this module
 // (configureServer is a dev hook). Restart Vite after editing the JSON.
@@ -11,6 +17,11 @@ const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
 const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
+
+// In memory only, so the dev server never touches the real settings file
+// (and starts from defaults on each restart). No validation: the real
+// engine checks values.
+let demoSettings: Settings = {}
 
 interface DemoHunk {
   id: string
@@ -95,6 +106,19 @@ async function handle(
 ): Promise<void> {
   const { pathname } = url
   const method = req.method ?? 'GET'
+
+  if (method === 'GET' && pathname === '/api/settings') {
+    sendJson(res, 200, demoSettings)
+    return
+  }
+
+  if (method === 'PATCH' && pathname === '/api/settings') {
+    // Trusted dev-only input; see demoSettings above.
+    const patch = (await readJsonBody(req)) as SettingsPatch
+    demoSettings = mergeSettings(demoSettings, patch)
+    sendJson(res, 200, demoSettings)
+    return
+  }
 
   if (method === 'GET' && pathname === '/api/session') {
     sendJson(res, 200, session)

@@ -1,5 +1,10 @@
 // Types
-import type { HunkStatus, ReviewSessionSummary } from '../types'
+import type {
+  HunkStatus,
+  ReviewSessionSummary,
+  Settings,
+  SettingsPatch,
+} from '../types'
 
 const TOKEN = new URLSearchParams(window.location.search).get('token') ?? ''
 
@@ -63,6 +68,18 @@ export function setHunkEditedContent(
 
 export function fetchFileContent(path: string): Promise<{ content: string }> {
   return apiFetch(`/api/files/content?path=${encodeURIComponent(path)}`)
+}
+
+export function fetchSettings(): Promise<Settings> {
+  return apiFetch('/api/settings')
+}
+
+export function patchSettings(patch: SettingsPatch): Promise<Settings> {
+  return apiFetch('/api/settings', {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+  })
 }
 
 export function submitReview(): Promise<void> {

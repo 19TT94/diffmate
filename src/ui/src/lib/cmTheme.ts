@@ -47,8 +47,8 @@ const tokyoNightHighlight = HighlightStyle.define([
   { tag: t.invalid, color: '#db4b4b' },
 ])
 
-// Shared chrome for both panes. Diff-row tints (diffAddBg/diffDelBg) stay
-// the app's light tiles on the dark pane, matching the pre-pivot look.
+// Shared chrome for both panes. Diff-row tints (diffAddBg/diffDelBg) are
+// translucent washes over the dark pane; see cmDiffTintTheme.
 const cmTheme = EditorView.theme({
   '&': {
     height: '100%',
@@ -103,13 +103,8 @@ const cmTheme = EditorView.theme({
   '.cm-hunk-deletion': {
     backgroundColor: 'rgba(219, 75, 75, 0.14)',
   },
-  // Old-side diff strip: add/del row tints plus gutter +/- coloring.
-  '.cm-diff-row-add': {
-    backgroundColor: theme.colors.diffAddBg,
-  },
-  '.cm-diff-row-del': {
-    backgroundColor: theme.colors.diffDelBg,
-  },
+  // Old-side diff strip gutter +/- coloring; the row tints are in
+  // cmDiffTintTheme since users can change them.
   '.cm-diff-gutter-add': {
     color: theme.colors.success,
   },
@@ -122,4 +117,20 @@ const cmHighlight = syntaxHighlighting(tokyoNightHighlight)
 
 export function cmHighlightTheme() {
   return [cmTheme, cmHighlight]
+}
+
+// Add/del row tints from the live theme (user settings can change them), kept
+// separate so an editor can swap just these without rebuilding.
+export function cmDiffTintTheme(colors: {
+  diffAddBg: string
+  diffDelBg: string
+}) {
+  return EditorView.theme({
+    '.cm-diff-row-add': {
+      backgroundColor: colors.diffAddBg,
+    },
+    '.cm-diff-row-del': {
+      backgroundColor: colors.diffDelBg,
+    },
+  })
 }

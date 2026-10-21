@@ -236,6 +236,14 @@ up by the browser's open `GET /api/events` SSE connection. A
 `GET /api/session` endpoint reports `mode: 'cli' | 'mcp'` so the UI can
 show/hide the "ask the agent" box without a separate build.
 
+Display settings (agent card and primary colors, diff tint intensity, file
+list width) persist across reviews in `~/.config/diffmate/settings.json`
+(`$XDG_CONFIG_HOME/diffmate/` when set), served by every review server as
+`GET /api/settings` and `PATCH /api/settings` (fields merge, `null` removes
+one, invalid values are a 400). The browser's own storage can't do this:
+each review serves on a new port, which is a new origin. This file is the
+only thing a review writes, and it lives outside the repo.
+
 Installation (`diffmate install`):
 
 1. Merge a `diffmate` entry into project-root `.mcp.json`
@@ -306,8 +314,9 @@ install` should document (or attempt to configure) auto-approval for
   ceiling that emits `review_abandoned` after N minutes of no activity.
 - **Concurrent sessions are explicitly out of scope for v1** — one session
   per process, ephemeral ports (`listen(0)`) to avoid collisions.
-- **Semantics clarity** — "reject" is a signal only; diffmate never mutates
-  files or runs git commands beyond reading diffs. Make this explicit in UI
+- **Semantics clarity** — "reject" is a signal only; a review never mutates
+  the repo's files or runs git commands beyond reading diffs (its only
+  write is diffmate's own `~/.config/diffmate/settings.json`). Make this explicit in UI
   copy so it's never mistaken for an auto-revert.
 - **`@modelcontextprotocol/sdk` version churn** — MCP is still evolving; pin
   a version, expect to revisit compatibility later.

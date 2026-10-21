@@ -16,26 +16,26 @@ export function ViewModeToggle({
   onLayoutChange,
 }: ViewModeToggleProps) {
   return (
-    <Group role="group" aria-label="Diff layout">
-      <Button
-        size="sm"
-        variant="ghost"
-        active={layout === 'stacked'}
-        aria-pressed={layout === 'stacked'}
-        title="Stack the diff above the file"
-        onClick={() => onLayoutChange('stacked')}
-      >
-        ▬▬
-      </Button>
+    <Group role="group" aria-label="Diff view">
       <Button
         size="sm"
         variant="ghost"
         active={layout === 'side-by-side'}
         aria-pressed={layout === 'side-by-side'}
-        title="Show the diff and file side by side"
+        title="Show old and new side by side"
         onClick={() => onLayoutChange('side-by-side')}
       >
         ▮▮
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        active={layout === 'inline'}
+        aria-pressed={layout === 'inline'}
+        title="Show one inline diff"
+        onClick={() => onLayoutChange('inline')}
+      >
+        ▬▬
       </Button>
     </Group>
   )

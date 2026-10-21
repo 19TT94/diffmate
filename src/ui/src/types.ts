@@ -13,7 +13,8 @@ export interface DiffLine {
 
 export type HunkStatus = 'pending' | 'approved' | 'rejected'
 
-export type DiffLayout = 'stacked' | 'side-by-side'
+// How the diff panel shows a hunk: old/new columns, or one inline diff.
+export type DiffLayout = 'side-by-side' | 'inline'
 
 export interface Question {
   id: string
@@ -73,4 +74,25 @@ export interface ReviewSessionSummary {
   title: string | null
   summary: string | null
   reviewComplete: boolean
+}
+
+// Mirrors engine/settings.ts: user preferences saved outside the repo and
+// served at /api/settings.
+export interface SettingsColors {
+  agent?: string
+  primary?: string
+  // 0 (subtlest) to 1 (strongest); the hue stays green/red.
+  diffAddIntensity?: number
+  diffDelIntensity?: number
+}
+
+export interface Settings {
+  colors?: SettingsColors
+  fileListWidth?: number
+}
+
+// null removes a field, as with PATCH /api/settings.
+export interface SettingsPatch {
+  colors?: { [K in keyof SettingsColors]?: SettingsColors[K] | null } | null
+  fileListWidth?: number | null
 }

@@ -1,4 +1,4 @@
-import { fireEvent, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -45,16 +45,26 @@ function renderHunkView(
       fileContent={null}
       fileContentError={null}
       fileContentLoading={false}
-      oldColumnWidth={220}
-      onOldColumnWidthChange={() => {}}
-      layout="stacked"
+      layout="side-by-side"
       onLayoutChange={() => {}}
+      onPrev={null}
+      onNext={null}
+      position={{ index: 0, total: 1 }}
       {...overrides}
     />,
   )
 }
 
 describe('HunkView', () => {
+  it('shows the file name in the toolbar with the full path on hover', () => {
+    renderHunkView({ filePath: 'src/ui/src/components/ui/Button.tsx' })
+
+    const name = document.querySelector(
+      '[title="src/ui/src/components/ui/Button.tsx"]',
+    )
+    expect(name?.textContent).toBe('Button.tsx')
+  })
+
   it('calls onSetStatus when Approve is clicked', async () => {
     const user = userEvent.setup()
     const onSetStatus = vi.fn()
@@ -68,7 +78,7 @@ describe('HunkView', () => {
     expect(onSetStatus).toHaveBeenCalledWith('approved')
   })
 
-  it('renders the stacked top panel with removed rows left and added rows right', async () => {
+  it('renders the diff panel with removed rows on the old side and added rows on the new', async () => {
     renderHunkView({
       hunk: fixtureHunk({
         lines: [
@@ -116,7 +126,7 @@ describe('HunkView', () => {
     expect(document.body.textContent).toContain('three')
   })
 
-  it('renders the hunk summary when present', () => {
+  it('renders the hunk summary as the Explanation when present', () => {
     renderHunkView({
       hunk: fixtureHunk({
         summary:
@@ -124,7 +134,7 @@ describe('HunkView', () => {
       }),
     })
 
-    expect(document.body.textContent).toContain('Summary')
+    expect(document.body.textContent).toContain('Explanation')
     expect(document.body.textContent).toContain(
       'Added size prop so toolbar buttons can stay compact without a one-off override.',
     )
@@ -158,46 +168,75 @@ describe('HunkView', () => {
     expect(onFileChange).toHaveBeenCalledWith(expect.stringContaining('x'))
   })
 
-  it('resizes the old column by dragging the divider', () => {
-    const onOldColumnWidthChange = vi.fn()
-    const { container } = renderHunkView({
-      layout: 'side-by-side',
-      oldColumnWidth: 220,
-      onOldColumnWidthChange,
-    })
+  it('keeps the toolbar outside the separately bordered diff and file panels', () => {
+    renderHunkView()
 
-    const resizer = container.querySelector('[style*="grid-template-columns"]')!
-      .children[1] as HTMLElement
-
-    fireEvent.mouseDown(resizer, { clientX: 100 })
-    fireEvent.mouseMove(document, { clientX: 150 })
-
-    expect(onOldColumnWidthChange).toHaveBeenCalledWith(270)
+    const toolbar = document.querySelector('[role="toolbar"]')!
+    const diff = screen.getByRole('region', { name: 'Diff' })
+    const file = screen.getByRole('region', { name: 'File' })
+    expect(diff.contains(toolbar)).toBe(false)
+    expect(file.contains(diff)).toBe(false)
+    expect(diff.contains(file)).toBe(false)
   })
 
-  it('hides the column resizer in stacked layout', () => {
-    const { container } = renderHunkView({ layout: 'stacked' })
+  it('puts the side-by-side/inline toggle in the diff panel', () => {
+    renderHunkView()
 
+    const diff = screen.getByRole('region', { name: 'Diff' })
     expect(
-      container.querySelector('[style*="grid-template-columns"]'),
+      diff.querySelector('[role="group"][aria-label="Diff view"]'),
+    ).not.toBeNull()
+    expect(
+      document
+        .querySelector('[role="toolbar"]')!
+        .querySelector('[aria-label="Diff view"]'),
     ).toBeNull()
+  })
+
+  it('scrolls both side-by-side columns together in one container', async () => {
+    renderHunkView({ layout: 'side-by-side' })
+
+    const scroll = screen.getByTestId('diff-scroll')
+    await waitFor(() => {
+      expect(scroll.querySelectorAll('.cm-editor')).toHaveLength(2)
+    })
+  })
+
+  it('shows a single inline diff pane in the inline view', async () => {
+    renderHunkView({ layout: 'inline' })
+
+    const scroll = screen.getByTestId('diff-scroll')
+    await waitFor(() => {
+      expect(scroll.querySelectorAll('.cm-editor')).toHaveLength(1)
+    })
   })
 
   it('reports layout changes from the view toggle', async () => {
     const user = userEvent.setup()
     const onLayoutChange = vi.fn()
-    renderHunkView({ layout: 'stacked', onLayoutChange })
+    renderHunkView({ layout: 'inline', onLayoutChange })
 
     await user.click(
-      document.querySelector(
-        'button[title="Show the diff and file side by side"]',
-      )!,
+      document.querySelector('button[title="Show old and new side by side"]')!,
     )
     await user.click(
-      document.querySelector('button[title="Stack the diff above the file"]')!,
+      document.querySelector('button[title="Show one inline diff"]')!,
     )
 
     expect(onLayoutChange).toHaveBeenNthCalledWith(1, 'side-by-side')
-    expect(onLayoutChange).toHaveBeenNthCalledWith(2, 'stacked')
+    expect(onLayoutChange).toHaveBeenNthCalledWith(2, 'inline')
+  })
+
+  it('gives the diff and file panels their own collapse and larger-view buttons', () => {
+    renderHunkView()
+
+    for (const name of ['diff', 'file']) {
+      expect(
+        screen.getByRole('button', { name: `Collapse ${name}` }),
+      ).toBeTruthy()
+      expect(
+        screen.getByRole('button', { name: `Open ${name} in a larger view` }),
+      ).toBeTruthy()
+    }
   })
 })
