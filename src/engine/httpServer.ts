@@ -32,7 +32,11 @@ const SSE_EVENTS = [
   'question_asked',
   'question_answered',
   'review_complete',
+  'review_ended',
 ] as const
+
+// How long close() lets in-flight responses finish before dropping them.
+const CLOSE_GRACE_MS = 500
 
 export interface ReviewServer {
   url: string
@@ -76,6 +80,9 @@ export async function startReviewServer(
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()))
+        // An open SSE stream would otherwise keep close() waiting forever.
+        server.closeIdleConnections()
+        setTimeout(() => server.closeAllConnections(), CLOSE_GRACE_MS).unref()
       }),
   }
 }
@@ -225,6 +232,9 @@ function handleEvents(session: ReviewSession, res: ServerResponse): void {
   const listeners = SSE_EVENTS.map((type) => {
     const listener = (payload: unknown): void => {
       res.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`)
+      // Nothing follows review_ended; ending the stream here lets the
+      // event flush before the server shuts down.
+      if (type === 'review_ended') res.end()
     }
     session.bus.on(type, listener)
     return { type, listener }

@@ -158,4 +158,10 @@ export class ReviewSession {
     this.reviewComplete = true
     this.bus.emit('review_complete', { sessionId: this.id })
   }
+
+  // The agent is done with this review (phase 2's end_review), whether or
+  // not it was submitted. Lets the browser stop waiting on a dead session.
+  end(reason: string | null): void {
+    this.bus.emit('review_ended', { sessionId: this.id, reason })
+  }
 }
