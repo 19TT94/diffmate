@@ -16,6 +16,8 @@ interface PanelProps {
   actions?: ReactNode
   // Adds a button that opens the panel in a larger view over the page.
   expandable?: boolean
+  // Replaces the title in the larger view, which has no surrounding context.
+  expandedTitle?: ReactNode
   // The body; without one there is nothing to collapse.
   children?: ReactNode
   className?: string
@@ -32,6 +34,7 @@ export function Panel({
   tone = 'neutral',
   actions,
   expandable = false,
+  expandedTitle,
   children,
   className,
 }: PanelProps) {
@@ -85,7 +88,7 @@ export function Panel({
         <Header $tone={tone}>
           <Heading id={headingId}>
             {badge && <Badge $tone={tone}>{badge}</Badge>}
-            <Title>{title}</Title>
+            <Title>{expanded ? (expandedTitle ?? title) : title}</Title>
           </Heading>
           {actions}
           {expanded ? (

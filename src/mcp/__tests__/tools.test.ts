@@ -23,9 +23,9 @@ type Activity =
   | {
       type: 'question'
       questionId: string
-      hunkId: string
-      filePath: string
-      hunkHeader: string
+      hunkId: string | null
+      filePath: string | null
+      hunkHeader: string | null
       questionText: string
     }
   | {
@@ -34,8 +34,16 @@ type Activity =
         counts: { rejected: number }
         rejected: { hunkId: string }[]
       }
+      unansweredQuestions: {
+        questionId: string
+        questionText: string
+        hunkId: string | null
+        filePath: string | null
+        hunkHeader: string | null
+      }[]
       summaryMarkdown: string
     }
+  | { type: 'review_ended' }
 
 // Sequential: every test chdirs into its own temp repo.
 
@@ -275,7 +283,7 @@ test('answer_question stores the answer and pushes it to the browser', async () 
       sse.stop()
     }
     const body = await (await review.api('/api/session')).json()
-    assert.equal(body.files[0].hunks[0].questions[0].answer, 'Because.')
+    assert.equal(body.questions[0].answer, 'Because.')
   })
 })
 
@@ -345,5 +353,96 @@ test('end_review can abort a review that was never submitted', async () => {
     // The replacement review is live and independent of the ended one.
     const nextReview = reviewHelpers(review.linked, next)
     assert.equal((await nextReview.api('/api/session')).status, 200)
+  })
+})
+
+test('wait_for_activity hands over a review-level question with null hunk fields', async () => {
+  await withStartedReview(async (review) => {
+    const res = await review.api('/api/questions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Why this approach overall?' }),
+    })
+    const { questionId } = await res.json()
+
+    const activity = await callStructured<Activity>(
+      review.linked.client,
+      'wait_for_activity',
+      { sessionId: review.sessionId, timeoutSeconds: 1 },
+    )
+    assert.deepEqual(activity, {
+      type: 'question',
+      questionId,
+      hunkId: null,
+      filePath: null,
+      hunkHeader: null,
+      questionText: 'Why this approach overall?',
+    })
+  })
+})
+
+test('review_complete carries unanswered questions and lists them in the markdown', async () => {
+  await withStartedReview(async (review) => {
+    const hunkId = await review.hunkId()
+    const answeredId = await review.ask(hunkId, 'Answered one')
+    await callStructured(review.linked.client, 'answer_question', {
+      sessionId: review.sessionId,
+      questionId: answeredId,
+      answer: 'Done.',
+    })
+    const openId = await review.ask(hunkId, 'Too late?')
+    await review.submit()
+
+    const activity = await callStructured<Activity>(
+      review.linked.client,
+      'wait_for_activity',
+      { sessionId: review.sessionId, timeoutSeconds: 1 },
+    )
+    assert.equal(activity.type, 'review_complete')
+    if (activity.type !== 'review_complete') return
+    assert.deepEqual(activity.unansweredQuestions, [
+      {
+        questionId: openId,
+        questionText: 'Too late?',
+        hunkId,
+        filePath: 'tracked.txt',
+        hunkHeader: '@@ -1,2 +1,2 @@',
+      },
+    ])
+    assert.match(activity.summaryMarkdown, /## Unanswered questions/)
+    assert.match(activity.summaryMarkdown, /Too late\?/)
+  })
+})
+
+test('review_complete has an empty unansweredQuestions list when all were answered', async () => {
+  await withStartedReview(async (review) => {
+    await review.submit()
+    const activity = await callStructured<Activity>(
+      review.linked.client,
+      'wait_for_activity',
+      { sessionId: review.sessionId, timeoutSeconds: 1 },
+    )
+    assert.equal(activity.type, 'review_complete')
+    if (activity.type !== 'review_complete') return
+    assert.deepEqual(activity.unansweredQuestions, [])
+    assert.doesNotMatch(activity.summaryMarkdown, /Unanswered questions/)
+  })
+})
+
+test('a pending wait_for_activity returns review_ended as soon as end_review runs', async () => {
+  await withStartedReview(async (review) => {
+    const startedAt = Date.now()
+    const pending = callStructured<Activity>(
+      review.linked.client,
+      'wait_for_activity',
+      { sessionId: review.sessionId, timeoutSeconds: 10 },
+    )
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    await callStructured(review.linked.client, 'end_review', {
+      sessionId: review.sessionId,
+    })
+
+    assert.deepEqual(await pending, { type: 'review_ended' })
+    assert.ok(Date.now() - startedAt < 2000)
   })
 })

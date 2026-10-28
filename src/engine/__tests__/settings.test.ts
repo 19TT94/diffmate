@@ -75,3 +75,18 @@ test('concurrent updateSettings calls keep every field', async () => {
     colors: { agent: '#f06543', primary: '#0969da' },
   })
 })
+
+test('readSettings keeps a valid conversationWidth and drops a bad one', async () => {
+  assert.deepEqual(
+    await readSettings(
+      await tempFile(JSON.stringify({ conversationWidth: 400 })),
+    ),
+    { conversationWidth: 400 },
+  )
+  assert.deepEqual(
+    await readSettings(
+      await tempFile(JSON.stringify({ conversationWidth: 'wide' })),
+    ),
+    {},
+  )
+})

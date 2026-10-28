@@ -58,6 +58,29 @@ const TOOLS = [
           description:
             'Agent context — what the change does and why — shown in the review UI.',
         },
+        hunkSummaries: {
+          type: 'array',
+          description:
+            'One entry per hunk you changed, explaining why you made that ' +
+            'change; shown on the hunk in the review UI. Identify a hunk by ' +
+            'its file path and its 1-based position within that file, in ' +
+            'git diff order (a new untracked file is one hunk). List entries ' +
+            'in the order a human should review them, so what a change ' +
+            'depends on comes first: files are shown in the order they first ' +
+            "appear here (any you leave out come last), and a file's hunks " +
+            'stay in diff order. Say in each summary how the change connects ' +
+            'to the changes that follow. Entries that match no hunk come ' +
+            'back as unmatchedSummaries.',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string' },
+              hunk: { type: 'integer', minimum: 1 },
+              summary: { type: 'string' },
+            },
+            required: ['path', 'hunk', 'summary'],
+          },
+        },
       },
     },
   },
@@ -66,11 +89,14 @@ const TOOLS = [
     description:
       'Wait for the reviewer. Returns { type: "no_activity", pending, ' +
       'decided, idleSeconds } on timeout (call again right away without ' +
-      'narrating), a { type: "question" } to answer with answer_question, or ' +
-      '{ type: "review_complete" } with the decisions (stop looping, act on ' +
-      'them, then call end_review). If idleSeconds passes ~600, the reviewer ' +
-      'is likely away: give the user the review url, ' +
-      'stop looping, and resume when they say they are back.',
+      'narrating), a { type: "question" } to answer with answer_question ' +
+      '(a null filePath means it is about the whole review, not one hunk), ' +
+      'or { type: "review_complete" } with the decisions (stop looping, act ' +
+      'on them, answer any unansweredQuestions in your summary, then call ' +
+      'end_review). { type: "review_ended" } means the review is over; stop ' +
+      'looping. If idleSeconds passes ~600, the reviewer is likely away: ' +
+      'give the user the review url, stop looping, and resume when they say ' +
+      'they are back.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -184,6 +210,9 @@ function parseStartReviewArgs(input: Record<string, unknown>): StartReviewArgs {
   if (typeof input.staged === 'boolean') args.staged = input.staged
   if (typeof input.title === 'string') args.title = input.title
   if (typeof input.summary === 'string') args.summary = input.summary
+  if (Array.isArray(input.hunkSummaries)) {
+    args.hunkSummaries = input.hunkSummaries
+  }
   return args
 }
 

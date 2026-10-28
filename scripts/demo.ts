@@ -11,12 +11,14 @@ import { readUntrackedFile, resolveDiff } from '../src/engine/git.js'
 import { buildMarkdown } from '../src/engine/output.js'
 import { parseDiff, parseUntrackedFile } from '../src/engine/parseDiff.js'
 import { ReviewSession } from '../src/engine/session.js'
+import type { HunkSummaryInput } from '../src/engine/session.js'
 import { startReviewServer } from '../src/engine/httpServer.js'
 
 // Demo
 import {
   DEMO_USAGE,
   DemoArgError,
+  loadHunkSummaries,
   parseDemoArgs,
   type DemoArgs,
 } from './demoArgs.js'
@@ -39,8 +41,12 @@ if (!existsSync(path.join(uiDir, 'index.html'))) {
 }
 
 let demoArgs: DemoArgs
+let hunkSummaries: HunkSummaryInput[] = []
 try {
   demoArgs = parseDemoArgs(process.argv.slice(2))
+  if (demoArgs.hunkSummaries !== null) {
+    hunkSummaries = await loadHunkSummaries(demoArgs.hunkSummaries)
+  }
 } catch (error) {
   if (error instanceof DemoArgError) {
     console.error(`${error.message}\n\n${DEMO_USAGE}`)
@@ -75,6 +81,7 @@ if (demoArgs.mcp) {
   await runDemoAgent(client, {
     title: demoArgs.title,
     summary: demoArgs.summary,
+    hunkSummaries,
     log: (text) => console.log(text),
   })
   await client.close()
@@ -93,7 +100,11 @@ for (const relPath of raw.untrackedFiles) {
 const session = new ReviewSession(hasAgentContext ? 'mcp' : 'cli', {}, files, {
   title: demoArgs.title,
   summary: demoArgs.summary,
+  hunkSummaries,
 })
+for (const miss of session.unmatchedSummaries) {
+  console.warn(`No hunk ${miss.hunk} in ${miss.path}; skipped its summary.`)
+}
 const server = await startReviewServer(session, uiDir, raw.repoRoot)
 
 console.log(`Reviewing: ${raw.repoRoot}`)
