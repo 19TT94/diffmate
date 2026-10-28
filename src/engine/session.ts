@@ -14,14 +14,13 @@ import type {
   SessionMode,
 } from './types.js'
 
-interface HunkLocation {
+export interface HunkLocation {
   file: ReviewFile
   hunk: ReviewHunk
 }
 
 // Attaches fresh review state to freshly-parsed diff data; every hunk starts
-// pending with no summary/comment/questions regardless of what a prior
-// session did.
+// pending with no summary/comment regardless of what a prior session did.
 function toReviewFile(file: ParsedFile): ReviewFile {
   return {
     ...file,
@@ -29,12 +28,10 @@ function toReviewFile(file: ParsedFile): ReviewFile {
     hunks: file.hunks.map((hunk): ReviewHunk => ({
       ...hunk,
       status: 'pending',
-      // TODO: accept optional per-hunk summaries from the caller (agent /
-      // CLI) instead of always starting null.
+      // Filled from the agent's hunkSummaries, if any, after construction.
       summary: null,
       comment: null,
       editedContent: null,
-      questions: [],
     })),
   }
 }
@@ -45,6 +42,17 @@ function toReviewFile(file: ParsedFile): ReviewFile {
 export interface SessionAgentContext {
   title: string | null
   summary: string | null
+  // Per-hunk "why" from the agent, shown as each hunk's Explanation.
+  hunkSummaries?: HunkSummaryInput[]
+}
+
+// Addresses a hunk the way an agent sees its own diff: by file path and the
+// hunk's 1-based position within that file, in `git diff` order (a new
+// untracked file is one hunk).
+export interface HunkSummaryInput {
+  path: string
+  hunk: number
+  summary: string
 }
 
 export class ReviewSession {
@@ -59,6 +67,11 @@ export class ReviewSession {
   // without this class needing to change shape between the two.
   readonly bus: EventEmitter
   reviewComplete: boolean
+  // Hunk summaries that matched no hunk, kept so the agent can be told.
+  readonly unmatchedSummaries: HunkSummaryInput[]
+  // The review's one conversation, in the order questions were asked; each
+  // is about a hunk or (hunkId null) the whole review.
+  readonly questions: Question[]
 
   // Hunk/question ids are opaque strings, not array indices, because the
   // REST routes and MCP tools address them by id (a browser tab or the MCP
@@ -80,6 +93,14 @@ export class ReviewSession {
     this.summary = agent.summary
     this.bus = new EventEmitter()
     this.reviewComplete = false
+    this.questions = []
+    this.unmatchedSummaries = []
+    for (const input of agent.hunkSummaries ?? []) {
+      const file = this.files.find((candidate) => candidate.path === input.path)
+      const hunk = file?.hunks[input.hunk - 1]
+      if (hunk) hunk.summary = input.summary
+      else this.unmatchedSummaries.push(input)
+    }
 
     this.hunksById = new Map()
     this.questionsById = new Map()
@@ -88,6 +109,10 @@ export class ReviewSession {
         this.hunksById.set(hunk.id, { file, hunk })
       }
     }
+  }
+
+  findHunk(hunkId: string): HunkLocation | null {
+    return this.hunksById.get(hunkId) ?? null
   }
 
   private requireHunk(hunkId: string): HunkLocation {
@@ -127,8 +152,9 @@ export class ReviewSession {
     file.notes = notes
   }
 
-  askQuestion(hunkId: string, text: string): Question {
-    const { hunk } = this.requireHunk(hunkId)
+  // A null hunkId asks about the whole review.
+  askQuestion(hunkId: string | null, text: string): Question {
+    if (hunkId !== null) this.requireHunk(hunkId)
     const question: Question = {
       id: randomUUID(),
       hunkId,
@@ -137,7 +163,7 @@ export class ReviewSession {
       answer: null,
       answeredAt: null,
     }
-    hunk.questions.push(question)
+    this.questions.push(question)
     this.questionsById.set(question.id, question)
     this.bus.emit('question_asked', question)
     return question

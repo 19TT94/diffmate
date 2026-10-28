@@ -32,9 +32,11 @@ export interface ParsedFile {
 
 export type HunkStatus = 'pending' | 'approved' | 'rejected'
 
+// One message in the review's conversation. `hunkId` is the hunk it's
+// about, or null for a question about the whole review.
 export interface Question {
   id: string
-  hunkId: string
+  hunkId: string | null
   text: string
   askedAt: number
   answer: string | null
@@ -48,15 +50,14 @@ export interface ReviewHunk extends Hunk {
   // Agent-authored rationale for this hunk: relevant context and the
   // decision that led to the change. Distinct from `comment`, which is
   // reviewer feedback for the agent.
-  // TODO: populate when the agent (or CLI) supplies per-hunk summaries —
-  // currently always null at session creation.
+  // Supplied by the agent through start_review's hunkSummaries; null
+  // otherwise (and always for CLI reviews).
   summary: string | null
   comment: string | null
   // A user-proposed rewrite of the hunk's new-side code, attached as review
   // feedback for the agent to read and apply itself — never written to
   // disk, same as `comment`.
   editedContent: string | null
-  questions: Question[]
 }
 
 export interface ReviewFile {

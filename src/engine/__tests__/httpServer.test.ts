@@ -225,7 +225,52 @@ test('POST /api/questions enqueues a question and returns 202', async () => {
     })
     assert.equal(res.status, 202)
     const body = await res.json()
-    assert.equal(session.files[0]!.hunks[0]!.questions[0]!.id, body.questionId)
+    assert.equal(session.questions[0]!.id, body.questionId)
+    assert.equal(session.questions[0]!.hunkId, 'a.txt@@hunk1')
+  })
+})
+
+test('GET /api/session returns the review-wide question list', async () => {
+  await withServer(async (_server, session, apiUrl) => {
+    const question = session.askQuestion(null, 'overall?')
+    const body = await (await fetch(apiUrl('/api/session'))).json()
+    assert.deepEqual(body.questions, [question])
+    assert.equal('questions' in body.files[0].hunks[0], false)
+  })
+})
+
+test('POST /api/questions without a hunk asks about the whole review', async () => {
+  await withServer(async (_server, session, apiUrl) => {
+    for (const payload of [
+      { text: 'overall?' },
+      { hunkId: null, text: 'why?' },
+    ]) {
+      const res = await fetch(apiUrl('/api/questions'), {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      assert.equal(res.status, 202)
+    }
+    assert.deepEqual(
+      session.questions.map((q) => q.hunkId),
+      [null, null],
+    )
+  })
+})
+
+test('POST /api/questions 400s without text and 404s for an unknown hunk', async () => {
+  await withServer(async (_server, session, apiUrl) => {
+    const noText = await fetch(apiUrl('/api/questions'), {
+      method: 'POST',
+      body: JSON.stringify({ hunkId: 'a.txt@@hunk1' }),
+    })
+    assert.equal(noText.status, 400)
+    const unknown = await fetch(apiUrl('/api/questions'), {
+      method: 'POST',
+      body: JSON.stringify({ hunkId: 'nope', text: 'why?' }),
+    })
+    assert.equal(unknown.status, 404)
+    assert.deepEqual(session.questions, [])
   })
 })
 
@@ -393,5 +438,24 @@ test('an empty PATCH /api/settings writes nothing', async () => {
     assert.equal(res.status, 200)
     assert.deepEqual(await res.json(), {})
     await assert.rejects(readFile(settingsPath, 'utf8'), { code: 'ENOENT' })
+  })
+})
+
+test('PATCH /api/settings handles conversationWidth like fileListWidth', async () => {
+  await withSettingsServer(async (apiUrl) => {
+    const saved = await patchSettings(apiUrl('/api/settings'), {
+      conversationWidth: 400,
+    })
+    assert.deepEqual(await saved.json(), { conversationWidth: 400 })
+
+    const invalid = await patchSettings(apiUrl('/api/settings'), {
+      conversationWidth: -1,
+    })
+    assert.equal(invalid.status, 400)
+
+    const cleared = await patchSettings(apiUrl('/api/settings'), {
+      conversationWidth: null,
+    })
+    assert.deepEqual(await cleared.json(), {})
   })
 })

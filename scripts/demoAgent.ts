@@ -1,11 +1,16 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 
+// Engine
+import type { HunkSummaryInput } from '../src/engine/session.js'
+
 // MCP
+import { isHunkSummary } from '../src/mcp/tools.js'
 import type { Activity, StartReviewResult } from '../src/mcp/tools.js'
 
 export interface DemoAgentOptions {
   title: string | null
   summary: string | null
+  hunkSummaries?: HunkSummaryInput[]
   timeoutSeconds?: number
   log: (text: string) => void
 }
@@ -30,6 +35,7 @@ export async function runDemoAgent(
   const startArgs: Record<string, unknown> = {}
   if (options.title !== null) startArgs.title = options.title
   if (options.summary !== null) startArgs.summary = options.summary
+  if (options.hunkSummaries) startArgs.hunkSummaries = options.hunkSummaries
   const started = await callTool<StartReviewResult>(
     client,
     'start_review',
@@ -38,6 +44,13 @@ export async function runDemoAgent(
   options.log(
     `Review started (${started.fileCount} files, ${started.hunkCount} hunks): ${started.url}`,
   )
+  for (const miss of started.unmatchedSummaries) {
+    options.log(
+      isHunkSummary(miss)
+        ? `No hunk ${miss.hunk} in ${miss.path}; skipped its summary.`
+        : `Malformed hunk summary; skipped its summary: ${JSON.stringify(miss)}`,
+    )
+  }
 
   for (;;) {
     const activity = await callTool<Activity>(client, 'wait_for_activity', {
@@ -50,10 +63,13 @@ export async function runDemoAgent(
     if (activity.type === 'no_activity') continue
 
     if (activity.type === 'question') {
+      const about =
+        activity.filePath === null
+          ? 'the review as a whole'
+          : `why it changed ${activity.filePath} (${activity.hunkHeader})`
       const answer =
         `Demo agent here. You asked: "${activity.questionText}". A real ` +
-        `agent would explain why it changed ${activity.filePath} ` +
-        `(${activity.hunkHeader}).`
+        `agent would explain ${about}.`
       await callTool(client, 'answer_question', {
         sessionId: started.sessionId,
         questionId: activity.questionId,
@@ -62,6 +78,8 @@ export async function runDemoAgent(
       options.log(`Answered: ${activity.questionText}`)
       continue
     }
+
+    if (activity.type === 'review_ended') return
 
     options.log(activity.summaryMarkdown)
     await callTool(client, 'end_review', {

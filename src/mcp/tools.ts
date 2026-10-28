@@ -3,11 +3,18 @@ import { readUntrackedFile, resolveDiff } from '../engine/git.js'
 import type { DiffScope } from '../engine/git.js'
 import { startReviewServer } from '../engine/httpServer.js'
 import type { ReviewServer } from '../engine/httpServer.js'
-import { buildReport, renderMarkdown } from '../engine/output.js'
-import type { Report } from '../engine/output.js'
+import {
+  buildReport,
+  renderMarkdown,
+  unansweredQuestions,
+} from '../engine/output.js'
+import type { Report, UnansweredQuestion } from '../engine/output.js'
 import { parseDiff, parseUntrackedFile } from '../engine/parseDiff.js'
 import { ReviewSession } from '../engine/session.js'
-import type { SessionAgentContext } from '../engine/session.js'
+import type {
+  HunkSummaryInput,
+  SessionAgentContext,
+} from '../engine/session.js'
 
 // Types
 import type { Question } from '../engine/types.js'
@@ -22,6 +29,8 @@ export interface StartReviewArgs {
   staged?: boolean
   title?: string
   summary?: string
+  // As the agent sent them; malformed entries are reported back, not applied.
+  hunkSummaries?: unknown[]
 }
 
 export interface StartReviewResult {
@@ -29,6 +38,9 @@ export interface StartReviewResult {
   url: string
   fileCount: number
   hunkCount: number
+  // Hunk summaries that were malformed or matched no hunk (wrong path or
+  // position), as sent.
+  unmatchedSummaries: unknown[]
 }
 
 export interface WaitForActivityArgs {
@@ -47,12 +59,21 @@ export type Activity =
   | {
       type: 'question'
       questionId: string
-      hunkId: string
-      filePath: string
-      hunkHeader: string
+      // All three null when the question is about the whole review.
+      hunkId: string | null
+      filePath: string | null
+      hunkHeader: string | null
       questionText: string
     }
-  | { type: 'review_complete'; decisions: Report; summaryMarkdown: string }
+  | {
+      type: 'review_complete'
+      decisions: Report
+      // Asked but never answered; the agent answers these in its summary.
+      unansweredQuestions: UnansweredQuestion[]
+      summaryMarkdown: string
+    }
+  // end_review ran while this call was waiting; nothing more will come.
+  | { type: 'review_ended' }
 
 export interface AnswerQuestionArgs {
   sessionId: string
@@ -155,9 +176,11 @@ export class SessionController {
     // A submitted review the agent never ended is replaced, not leaked.
     await this.close()
 
+    const hunkSummaries = args.hunkSummaries ?? []
     const agent: SessionAgentContext = {
       title: args.title ?? null,
       summary: args.summary ?? null,
+      hunkSummaries: hunkSummaries.filter(isHunkSummary),
     }
     const session = new ReviewSession('mcp', scope, files, agent)
     const server = await startReviewServer(session, deps.uiDir, raw.repoRoot)
@@ -187,6 +210,10 @@ export class SessionController {
       url: server.url,
       fileCount: files.length,
       hunkCount,
+      unmatchedSummaries: [
+        ...hunkSummaries.filter((entry) => !isHunkSummary(entry)),
+        ...session.unmatchedSummaries,
+      ],
     }
   }
 
@@ -204,8 +231,10 @@ export class SessionController {
         clearTimeout(timer)
         bus.off('question_asked', onActivity)
         bus.off('review_complete', onActivity)
+        bus.off('review_ended', onEnded)
         resolve(activity)
       }
+      const onEnded = (): void => finish({ type: 'review_ended' })
       const onActivity = (): void => {
         const activity = nextActivity(review)
         if (activity) finish(activity)
@@ -218,6 +247,7 @@ export class SessionController {
       // the question is already queued when this runs.
       bus.on('question_asked', onActivity)
       bus.on('review_complete', onActivity)
+      bus.on('review_ended', onEnded)
     })
   }
 
@@ -262,28 +292,39 @@ export class SessionController {
   }
 }
 
+export function isHunkSummary(value: unknown): value is HunkSummaryInput {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Record<string, unknown>
+  return (
+    typeof entry.path === 'string' &&
+    Number.isInteger(entry.hunk) &&
+    (entry.hunk as number) >= 1 &&
+    typeof entry.summary === 'string'
+  )
+}
+
 function nextActivity(review: ActiveReview): Activity | null {
   const { session } = review
   if (session.reviewComplete) {
     const decisions = buildReport(session)
+    const unanswered = unansweredQuestions(session)
     return {
       type: 'review_complete',
       decisions,
-      summaryMarkdown: renderMarkdown(decisions),
+      unansweredQuestions: unanswered,
+      summaryMarkdown: renderMarkdown(decisions, unanswered),
     }
   }
   const question = review.undelivered.shift()
   if (!question) return null
-  const file = session.files.find((candidate) =>
-    candidate.hunks.some((hunk) => hunk.id === question.hunkId),
-  )
-  const hunk = file?.hunks.find((candidate) => candidate.id === question.hunkId)
+  const location =
+    question.hunkId === null ? null : session.findHunk(question.hunkId)
   return {
     type: 'question',
     questionId: question.id,
     hunkId: question.hunkId,
-    filePath: file?.path ?? '',
-    hunkHeader: hunk?.header ?? '',
+    filePath: location?.file.path ?? null,
+    hunkHeader: location?.hunk.header ?? null,
     questionText: question.text,
   }
 }

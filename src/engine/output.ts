@@ -152,7 +152,39 @@ function renderSection(
   for (const entry of entries) parts.push(renderEntry(entry), '')
 }
 
-export function renderMarkdown(report: Report): string {
+// A question the agent never answered before the review was submitted, with
+// the hunk it's about (all null for a question about the whole review), so
+// the agent can still answer it in its summary.
+export interface UnansweredQuestion {
+  questionId: string
+  questionText: string
+  hunkId: string | null
+  filePath: string | null
+  hunkHeader: string | null
+}
+
+export function unansweredQuestions(
+  session: ReviewSession,
+): UnansweredQuestion[] {
+  return session.questions
+    .filter((question) => question.answer === null)
+    .map((question) => {
+      const location =
+        question.hunkId === null ? null : session.findHunk(question.hunkId)
+      return {
+        questionId: question.id,
+        questionText: question.text,
+        hunkId: question.hunkId,
+        filePath: location?.file.path ?? null,
+        hunkHeader: location?.hunk.header ?? null,
+      }
+    })
+}
+
+export function renderMarkdown(
+  report: Report,
+  unanswered: UnansweredQuestion[] = [],
+): string {
   const parts: string[] = [
     '# diffmate review',
     '',
@@ -172,6 +204,17 @@ export function renderMarkdown(report: Report): string {
     parts.push('', '## Additional file edits (outside reviewed hunks)', '')
     for (const note of report.fileNotes) {
       parts.push(`### ${note.filePath}`, '', '```diff', note.notes, '```', '')
+    }
+  }
+
+  if (unanswered.length > 0) {
+    parts.push('', '## Unanswered questions', '')
+    for (const question of unanswered) {
+      const about =
+        question.filePath === null
+          ? 'the whole review'
+          : `${question.filePath} \`${question.hunkHeader}\``
+      parts.push(`- About ${about}: ${question.questionText}`)
     }
   }
 
