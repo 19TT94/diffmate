@@ -64,8 +64,13 @@ const TOOLS = [
             'One entry per hunk you changed, explaining why you made that ' +
             'change; shown on the hunk in the review UI. Identify a hunk by ' +
             'its file path and its 1-based position within that file, in ' +
-            'git diff order (a new untracked file is one hunk). Entries that ' +
-            'match no hunk come back as unmatchedSummaries.',
+            'git diff order (a new untracked file is one hunk). List entries ' +
+            'in the order a human should review them, so what a change ' +
+            'depends on comes first: files are shown in the order they first ' +
+            "appear here (any you leave out come last), and a file's hunks " +
+            'stay in diff order. Say in each summary how the change connects ' +
+            'to the changes that follow. Entries that match no hunk come ' +
+            'back as unmatchedSummaries.',
           items: {
             type: 'object',
             properties: {

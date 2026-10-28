@@ -88,19 +88,33 @@ export class ReviewSession {
     this.id = randomUUID()
     this.mode = mode
     this.scope = scope
-    this.files = files.map(toReviewFile)
+    const reviewFiles = files.map(toReviewFile)
     this.title = agent.title
     this.summary = agent.summary
     this.bus = new EventEmitter()
     this.reviewComplete = false
     this.questions = []
     this.unmatchedSummaries = []
+    // The agent lists summaries in the order a reviewer should walk the
+    // change, so files go in the order they're first matched; the rest
+    // follow in git order. Hunks within a file keep git order.
+    const walkthrough = new Set<ReviewFile>()
     for (const input of agent.hunkSummaries ?? []) {
-      const file = this.files.find((candidate) => candidate.path === input.path)
+      const file = reviewFiles.find(
+        (candidate) => candidate.path === input.path,
+      )
       const hunk = file?.hunks[input.hunk - 1]
-      if (hunk) hunk.summary = input.summary
-      else this.unmatchedSummaries.push(input)
+      if (file && hunk) {
+        hunk.summary = input.summary
+        walkthrough.add(file)
+      } else {
+        this.unmatchedSummaries.push(input)
+      }
     }
+    this.files = [
+      ...walkthrough,
+      ...reviewFiles.filter((file) => !walkthrough.has(file)),
+    ]
 
     this.hunksById = new Map()
     this.questionsById = new Map()

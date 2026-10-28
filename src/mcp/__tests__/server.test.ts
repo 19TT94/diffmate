@@ -108,6 +108,10 @@ test('tool descriptions guide the agent through the loop', async () => {
     assert.match(hunkSummaries, /1-based/)
     assert.match(hunkSummaries, /git diff order/)
     assert.match(hunkSummaries, /why/)
+    assert.match(hunkSummaries, /order a human should review/)
+    assert.match(hunkSummaries, /depends on comes first/)
+    assert.match(hunkSummaries, /order they first appear/)
+    assert.match(hunkSummaries, /connects to the changes that follow/)
   } finally {
     await linked.close()
     await rm(uiDir, { recursive: true, force: true })

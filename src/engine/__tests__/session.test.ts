@@ -241,3 +241,66 @@ test('hunk summaries that match no hunk are skipped and reported', () => {
   assert.equal(session.files[0]!.hunks[0]!.summary, 'kept')
   assert.deepEqual(session.unmatchedSummaries, [missingFile, pastEnd])
 })
+
+function threeFiles(): ParsedFile[] {
+  const hunk = (id: string) => ({
+    id,
+    header: '@@ -1,1 +1,1 @@',
+    oldStart: 1,
+    oldLines: 1,
+    newStart: 1,
+    newLines: 1,
+    lines: [],
+  })
+  const file = (path: string, ids: string[]): ParsedFile => ({
+    path,
+    oldPath: null,
+    status: 'modified',
+    binary: false,
+    hunks: ids.map(hunk),
+  })
+  return [
+    file('page.js', ['p1', 'p2']),
+    file('test.js', ['t1']),
+    file('hook.js', ['h1']),
+    file('utils.js', ['u1']),
+  ]
+}
+
+test('files follow the order they first appear in hunk summaries', () => {
+  const session = new ReviewSession('mcp', {}, threeFiles(), {
+    title: null,
+    summary: null,
+    hunkSummaries: [
+      { path: 'hook.js', hunk: 1, summary: 'The hook, used next by page.js.' },
+      { path: 'page.js', hunk: 2, summary: 'Uses the hook.' },
+      { path: 'page.js', hunk: 1, summary: 'Imports the hook.' },
+    ],
+  })
+
+  assert.deepEqual(
+    session.files.map((file) => file.path),
+    ['hook.js', 'page.js', 'test.js', 'utils.js'],
+  )
+  assert.deepEqual(
+    session.files[1]!.hunks.map((hunk) => hunk.id),
+    ['p1', 'p2'],
+  )
+})
+
+test('summaries that match no hunk do not move a file', () => {
+  const session = new ReviewSession('mcp', {}, threeFiles(), {
+    title: null,
+    summary: null,
+    hunkSummaries: [
+      { path: 'gone.js', hunk: 1, summary: 'No such file.' },
+      { path: 'utils.js', hunk: 2, summary: 'Past the end.' },
+      { path: 'hook.js', hunk: 1, summary: 'The hook.' },
+    ],
+  })
+
+  assert.deepEqual(
+    session.files.map((file) => file.path),
+    ['hook.js', 'page.js', 'test.js', 'utils.js'],
+  )
+})

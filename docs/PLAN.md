@@ -213,8 +213,11 @@ fileCount, hunkCount, unmatchedSummaries }`. `title`/`summary` are
   session-level agent context surfaced by the UI's banner. `hunkSummaries`
   is `[{ path, hunk, summary }]`: the agent's "why" for each hunk, shown as
   its Explanation, where `hunk` is the 1-based position within the file in
-  `git diff` order. Entries that match no hunk come back in
-  `unmatchedSummaries` instead of failing the call.
+  `git diff` order. The entries' order is the walkthrough: files are shown
+  in the order they first appear (unlisted files last, in git order), a
+  file's hunks stay in diff order, and each summary says how its change
+  leads into the next. Entries that are malformed or match no hunk come
+  back in `unmatchedSummaries` instead of failing the call.
 - **`wait_for_activity`** `{ sessionId, timeoutSeconds? (~20-25 default) }`
   → long-poll on the session's bus. Returns `{ type: 'no_activity',
 pending, decided, idleSeconds }` (agent calls again immediately — this is
