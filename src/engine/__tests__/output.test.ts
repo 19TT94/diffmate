@@ -2,7 +2,13 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 // Engine
-import { buildMarkdown, buildReport, renderJson } from '../output.js'
+import {
+  buildMarkdown,
+  buildReport,
+  renderJson,
+  renderMarkdown,
+  unansweredQuestions,
+} from '../output.js'
 import { ReviewSession } from '../session.js'
 
 // Types
@@ -245,4 +251,46 @@ test('renderJson includes fileNotes', () => {
   assert.deepEqual(json.fileNotes, [
     { filePath: 'c.js', notes: '@@ -1,1 +1,1 @@\n-old\n+new' },
   ])
+})
+
+test('unansweredQuestions lists open questions in order, with hunk context when tagged', () => {
+  const session = new ReviewSession('mcp', {}, fixtureFiles())
+  const hunkId = session.files[0]!.hunks[0]!.id
+  const tagged = session.askQuestion(hunkId, 'why here?')
+  const answered = session.askQuestion(hunkId, 'answered already')
+  session.answerQuestion(answered.id, 'yes')
+  const overall = session.askQuestion(null, 'why at all?')
+
+  assert.deepEqual(unansweredQuestions(session), [
+    {
+      questionId: tagged.id,
+      questionText: 'why here?',
+      hunkId,
+      filePath: session.files[0]!.path,
+      hunkHeader: session.files[0]!.hunks[0]!.header,
+    },
+    {
+      questionId: overall.id,
+      questionText: 'why at all?',
+      hunkId: null,
+      filePath: null,
+      hunkHeader: null,
+    },
+  ])
+})
+
+test('renderMarkdown adds an Unanswered questions section only when there are some', () => {
+  const session = new ReviewSession('mcp', {}, fixtureFiles())
+  const report = buildReport(session)
+  assert.doesNotMatch(renderMarkdown(report, []), /Unanswered questions/)
+
+  const hunk = session.files[0]!.hunks[0]!
+  session.askQuestion(hunk.id, 'why here?')
+  session.askQuestion(null, 'why at all?')
+  const markdown = renderMarkdown(report, unansweredQuestions(session))
+
+  assert.match(markdown, /## Unanswered questions/)
+  assert.match(markdown, /why here\?/)
+  assert.match(markdown, new RegExp(session.files[0]!.path))
+  assert.match(markdown, /why at all\?/)
 })

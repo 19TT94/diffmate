@@ -11,10 +11,9 @@ interface StyledButtonProps {
 
 const variantStyles = {
   primary: css<StyledButtonProps>`
-    background-color: ${({ theme, $active }) => ($active ? theme.colors.success : theme.colors.primary)};
-    border-color: ${({ theme, $active }) => ($active ? theme.colors.success : theme.colors.primary)};
-    color: ${({ theme, $active }) =>
-      $active ? theme.colors.tertiary : theme.colors.onPrimary};
+    background-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.onPrimary};
 
     &:hover:not(:disabled) {
       filter: brightness(0.92);
@@ -23,7 +22,7 @@ const variantStyles = {
   secondary: css<StyledButtonProps>`
     background-color: ${({ theme }) => theme.colors.tertiary};
     border-color: ${({ theme }) => theme.colors.border};
-    color: ${({ theme, $active }) => ($active ? theme.colors.danger : theme.colors.secondary)};
+    color: ${({ theme }) => theme.colors.secondary};
 
     &:hover:not(:disabled) {
       background-color: ${({ theme }) => theme.colors.background};

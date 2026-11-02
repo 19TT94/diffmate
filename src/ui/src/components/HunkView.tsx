@@ -92,22 +92,30 @@ export function HunkView({
         >
           ›
         </Button>
-        <Button
-          size="sm"
-          variant="primary"
-          active={hunk.status === 'approved'}
-          onClick={() => onSetStatus('approved')}
-        >
-          Approve
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          active={hunk.status === 'rejected'}
-          onClick={() => onSetStatus('rejected')}
-        >
-          Reject
-        </Button>
+        {/* A decided hunk shows its status in place of that button, so the
+            only action left is flipping it (or Reset). */}
+        {hunk.status === 'approved' ? (
+          <Decision $status="approved">✓ Approved</Decision>
+        ) : (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => onSetStatus('approved')}
+          >
+            Approve
+          </Button>
+        )}
+        {hunk.status === 'rejected' ? (
+          <Decision $status="rejected">✗ Rejected</Decision>
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onSetStatus('rejected')}
+          >
+            Reject
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -139,7 +147,7 @@ export function HunkView({
         <HunkDiff hunk={hunk} filePath={filePath} layout={layout} />
       </DiffPanel>
 
-      <EditorPanel title="File" name="file" expandable>
+      <EditorPanel title="File" name="file" expandable expandedTitle={filePath}>
         {newSide}
       </EditorPanel>
     </Container>
@@ -181,6 +189,20 @@ const Position = styled.span`
   flex: none;
   color: ${({ theme }) => theme.colors.muted};
   white-space: nowrap;
+`
+
+// Matches a small button's box so the toolbar doesn't shift on decide.
+const Decision = styled.span<{ $status: 'approved' | 'rejected' }>`
+  flex: none;
+  padding: 2px ${({ theme }) => theme.spacing[2]};
+  border: 1px solid currentColor;
+  border-radius: ${({ theme }) => theme.radii.md};
+  font-family: ${({ theme }) => theme.fonts.body};
+  font-weight: ${({ theme }) => theme.fontWeights.semibold};
+  white-space: nowrap;
+  color: ${({ $status, theme }) =>
+    $status === 'approved' ? theme.colors.success : theme.colors.danger};
+  background: color-mix(in srgb, currentColor 12%, transparent);
 `
 
 // Sized to its content up to 45% of the column; the editor takes the rest.

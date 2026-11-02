@@ -46,8 +46,7 @@ test('the demo agent starts a review, answers questions, and ends on submit', as
       await review.ask(await review.hunkId(), 'Why line two?')
       const answer = await waitFor(async () => {
         const body = await (await review.api('/api/session')).json()
-        return (body.files[0].hunks[0].questions[0]?.answer ?? undefined) as
-          string | undefined
+        return (body.questions[0]?.answer ?? undefined) as string | undefined
       })
       assert.match(answer, /Why line two\?/)
 
@@ -60,4 +59,77 @@ test('the demo agent starts a review, answers questions, and ends on submit', as
       await linked.close()
     }
   })
+})
+
+test('the demo agent passes hunk summaries through to start_review', async () => {
+  const calls: { name: string; arguments: Record<string, unknown> }[] = []
+  const client = {
+    callTool: async (request: {
+      name: string
+      arguments: Record<string, unknown>
+    }) => {
+      calls.push(request)
+      const structuredContent =
+        request.name === 'start_review'
+          ? {
+              sessionId: 's',
+              url: 'u',
+              fileCount: 1,
+              hunkCount: 1,
+              unmatchedSummaries: [],
+            }
+          : { type: 'review_ended' }
+      return { content: [], structuredContent }
+    },
+  }
+  const hunkSummaries = [{ path: 'a.py', hunk: 1, summary: 'Why.' }]
+
+  // A stub with only callTool, which is all runDemoAgent uses.
+  await runDemoAgent(client as unknown as Parameters<typeof runDemoAgent>[0], {
+    title: null,
+    summary: null,
+    hunkSummaries,
+    log: () => {},
+  })
+
+  assert.deepEqual(calls[0], {
+    name: 'start_review',
+    arguments: { hunkSummaries },
+  })
+})
+
+test('the demo agent warns about each summary start_review could not place', async () => {
+  const unmatchedSummaries = [
+    { path: 'a.py', hunk: 3, summary: 'Past the end.' },
+    { path: 'gone.py', hunk: 1, summary: 'No such file.' },
+  ]
+  const client = {
+    callTool: async (request: { name: string }) => ({
+      content: [],
+      structuredContent:
+        request.name === 'start_review'
+          ? {
+              sessionId: 's',
+              url: 'u',
+              fileCount: 1,
+              hunkCount: 1,
+              unmatchedSummaries,
+            }
+          : { type: 'review_ended' },
+    }),
+  }
+  const logged: string[] = []
+
+  // A stub with only callTool, which is all runDemoAgent uses.
+  await runDemoAgent(client as unknown as Parameters<typeof runDemoAgent>[0], {
+    title: null,
+    summary: null,
+    log: (text) => logged.push(text),
+  })
+
+  const warnings = logged.filter((text) => text.includes('skipped its summary'))
+  assert.deepEqual(warnings, [
+    'No hunk 3 in a.py; skipped its summary.',
+    'No hunk 1 in gone.py; skipped its summary.',
+  ])
 })

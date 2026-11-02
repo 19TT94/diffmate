@@ -78,6 +78,61 @@ describe('HunkView', () => {
     expect(onSetStatus).toHaveBeenCalledWith('approved')
   })
 
+  it('shows an approved hunk as a status, with Reject to flip it and Reset', async () => {
+    const user = userEvent.setup()
+    const onSetStatus = vi.fn()
+    renderHunkView({ hunk: fixtureHunk({ status: 'approved' }), onSetStatus })
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Hunk actions' })
+    expect(toolbar.textContent).toContain('✓ Approved')
+    expect(screen.queryByRole('button', { name: /approve/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Reject' }))
+    expect(onSetStatus).toHaveBeenCalledWith('rejected')
+  })
+
+  it('shows a rejected hunk as a status, with Approve to flip it and Reset', async () => {
+    const user = userEvent.setup()
+    const onSetStatus = vi.fn()
+    renderHunkView({ hunk: fixtureHunk({ status: 'rejected' }), onSetStatus })
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Hunk actions' })
+    expect(toolbar.textContent).toContain('✗ Rejected')
+    expect(screen.queryByRole('button', { name: /reject/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSetStatus).toHaveBeenCalledWith('approved')
+  })
+
+  it('keeps Approve, Reject and Reset buttons on a pending hunk', () => {
+    renderHunkView()
+
+    for (const name of ['Approve', 'Reject', 'Reset']) {
+      expect(screen.getByRole('button', { name })).toBeTruthy()
+    }
+  })
+
+  it('titles the File panel with the path only in the larger view', async () => {
+    const user = userEvent.setup()
+    renderHunkView({ filePath: 'src/pages/Page.js' })
+
+    const file = () => screen.getByRole('region', { name: 'File' })
+    expect(file()).toBeTruthy()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open file in a larger view' }),
+    )
+    const dialog = screen.getByRole('dialog', { name: 'src/pages/Page.js' })
+    expect(dialog).toBeTruthy()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Close larger file view' }),
+    )
+    expect(file()).toBeTruthy()
+  })
+
   it('renders the diff panel with removed rows on the old side and added rows on the new', async () => {
     renderHunkView({
       hunk: fixtureHunk({

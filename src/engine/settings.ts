@@ -9,6 +9,7 @@ import path from 'node:path'
 export interface Settings {
   colors?: SettingsColors
   fileListWidth?: number
+  conversationWidth?: number
 }
 
 export interface SettingsColors {
@@ -23,7 +24,11 @@ export interface SettingsColors {
 export interface SettingsPatch {
   colors?: { [K in keyof SettingsColors]?: SettingsColors[K] | null } | null
   fileListWidth?: number | null
+  conversationWidth?: number | null
 }
+
+// Panel widths in px; all validated and merged the same way.
+const WIDTH_FIELDS = ['fileListWidth', 'conversationWidth'] as const
 
 export class SettingsError extends Error {}
 
@@ -78,8 +83,9 @@ export async function readSettings(file: string): Promise<Settings> {
       settings.colors = colors as SettingsColors
     }
   }
-  if (isWidth(raw.fileListWidth)) {
-    settings.fileListWidth = raw.fileListWidth
+  for (const key of WIDTH_FIELDS) {
+    const value = raw[key]
+    if (isWidth(value)) settings[key] = value
   }
   return settings
 }
@@ -89,7 +95,10 @@ export async function readSettings(file: string): Promise<Settings> {
 export function parseSettingsPatch(raw: unknown): SettingsPatch {
   if (!isRecord(raw)) throw new SettingsError('settings must be an object')
   for (const key of Object.keys(raw)) {
-    if (key !== 'colors' && key !== 'fileListWidth') {
+    if (
+      key !== 'colors' &&
+      !(WIDTH_FIELDS as readonly string[]).includes(key)
+    ) {
       throw new SettingsError(`unknown setting: ${key}`)
     }
   }
@@ -105,12 +114,11 @@ export function parseSettingsPatch(raw: unknown): SettingsPatch {
       }
     }
   }
-  if (
-    raw.fileListWidth !== undefined &&
-    raw.fileListWidth !== null &&
-    !isWidth(raw.fileListWidth)
-  ) {
-    throw new SettingsError('invalid value for fileListWidth')
+  for (const key of WIDTH_FIELDS) {
+    const value = raw[key]
+    if (value !== undefined && value !== null && !isWidth(value)) {
+      throw new SettingsError(`invalid value for ${key}`)
+    }
   }
   // Every key and value was validated above.
   return raw as SettingsPatch
@@ -138,9 +146,10 @@ export function mergeSettings(
     }
   }
 
-  if (patch.fileListWidth === null) delete next.fileListWidth
-  else if (patch.fileListWidth !== undefined) {
-    next.fileListWidth = patch.fileListWidth
+  for (const key of WIDTH_FIELDS) {
+    const value = patch[key]
+    if (value === null) delete next[key]
+    else if (value !== undefined) next[key] = value
   }
   return next
 }

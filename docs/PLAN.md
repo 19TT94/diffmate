@@ -150,10 +150,11 @@ ReviewSession {
       Hunk {
         id, header, lines: Line[],
         status: 'pending' | 'approved' | 'rejected',
-        comment: string | null,
-        questions: Question[]
+        comment: string | null
       }
-        Question { id, hunkId, text, askedAt, answer, answeredAt }
+  questions: Question[]   // the review's one conversation, in ask order
+    Question { id, hunkId: string | null, text, askedAt, answer, answeredAt }
+    // hunkId null = a question about the whole review
   bus: EventEmitter   // generic pub/sub, backs both SSE and MCP long-poll
   reviewComplete: boolean
 }
@@ -205,20 +206,31 @@ v1 (a second `start_review` while one is active errors clearly).
 
 Tools:
 
-- **`start_review`** `{ base?, staged?, title?, summary? }` → builds the session
-  (`mode: 'mcp'`), starts the server, opens the browser, returns
-  immediately (non-blocking) with `{ sessionId, url, fileCount, hunkCount }`.
-  `title`/`summary` are session-level agent context surfaced by the UI's
-  banner (per-hunk summaries are a later slice).
+- **`start_review`** `{ base?, staged?, title?, summary?, hunkSummaries? }`
+  → builds the session (`mode: 'mcp'`), starts the server, opens the
+  browser, returns immediately (non-blocking) with `{ sessionId, url,
+fileCount, hunkCount, unmatchedSummaries }`. `title`/`summary` are
+  session-level agent context surfaced by the UI's banner. `hunkSummaries`
+  is `[{ path, hunk, summary }]`: the agent's "why" for each hunk, shown as
+  its Explanation, where `hunk` is the 1-based position within the file in
+  `git diff` order. The entries' order is the walkthrough: files are shown
+  in the order they first appear (unlisted files last, in git order), a
+  file's hunks stay in diff order, and each summary says how its change
+  leads into the next. Entries that are malformed or match no hunk come
+  back in `unmatchedSummaries` instead of failing the call.
 - **`wait_for_activity`** `{ sessionId, timeoutSeconds? (~20-25 default) }`
   → long-poll on the session's bus. Returns `{ type: 'no_activity',
 pending, decided, idleSeconds }` (agent calls again immediately — this is
   the poll/wait loop, not busy-polling, since the block happens
   server-side; the counts let it tell a busy reviewer from an absent one and
   stop after ~10 idle minutes), `{ type: 'question', questionId,
-hunkId, filePath, hunkHeader, questionText }` (drained one at a time), or
-  `{ type: 'review_complete', decisions: {...}, summaryMarkdown }`
-  (terminal — agent stops looping).
+hunkId, filePath, hunkHeader, questionText }` (drained one at a time; the
+  three hunk fields are `null` for a question about the whole review),
+  `{ type: 'review_complete', decisions: {...}, unansweredQuestions,
+summaryMarkdown }` (terminal — agent stops looping and answers any
+  `unansweredQuestions` in its summary; the markdown lists them too), or
+  `{ type: 'review_ended' }` (a call still waiting when `end_review` runs
+  returns this at once).
 - **`answer_question`** `{ sessionId, questionId, answer }` → stores the
   answer, pushes it down to the right browser tab via SSE keyed by
   `questionId`, returns `{ ok: true }`.
@@ -229,15 +241,16 @@ hunkId, filePath, hunkHeader, questionText }` (drained one at a time), or
 
 Correlation is two independent one-directional channels on the same
 in-memory session, keyed by `questionId`: browser → agent is
-`POST /api/questions` (returns `202` immediately, doesn't block on an
-answer, just enqueues for the next `wait_for_activity`); agent → browser is
+`POST /api/questions` `{ hunkId?, text }` (no `hunkId` asks about the
+whole review; returns `202` immediately, doesn't block on an answer, just
+enqueues for the next `wait_for_activity`); agent → browser is
 `answer_question` writing to session state and emitting on the bus, picked
 up by the browser's open `GET /api/events` SSE connection. A
 `GET /api/session` endpoint reports `mode: 'cli' | 'mcp'` so the UI can
 show/hide the "ask the agent" box without a separate build.
 
 Display settings (agent card and primary colors, diff tint intensity, file
-list width) persist across reviews in `~/.config/diffmate/settings.json`
+list and conversation drawer widths) persist across reviews in `~/.config/diffmate/settings.json`
 (`$XDG_CONFIG_HOME/diffmate/` when set), served by every review server as
 `GET /api/settings` and `PATCH /api/settings` (fields merge, `null` removes
 one, invalid values are a 400). The browser's own storage can't do this:
@@ -287,8 +300,35 @@ Installation (`diffmate install`):
   live Claude Code session: the full loop including `answer_question`, and
   ~45 consecutive 25s `wait_for_activity` calls with no tool-call timeout
   (the actual ceiling is still unmeasured). **Done.**
-- **M9** UI additions for Q&A (ask box, threaded display, SSE client, mode
-  detection) — depends on M8.
+- **M9** UI additions for Q&A — depends on M8. The SSE client and mode
+  detection already exist. **Decided** (2026-10-22):
+  - **One conversation per review**, in a right-hand drawer that mirrors the
+    file sidebar, opened by a "?" button next to the settings cog. The page
+    shifts to make room rather than being overlaid. MCP reviews only.
+  - **Questions can be hunk-level or review-level.** The ask box (pinned to
+    the drawer's bottom) starts tagged with the current hunk as a removable
+    chip; removing it asks about the whole review. Tags are chips that jump
+    to their hunk.
+  - **Engine/MCP change:** `Question.hunkId` becomes nullable and questions
+    move from each hunk to one ordered `session.questions` list;
+    `POST /api/questions` accepts no hunk; `wait_for_activity`'s question
+    payload gets nullable `hunkId` / `filePath` / `hunkHeader`.
+  - **Asking isn't a decision:** a hunk stays pending until approved or
+    rejected. Hunks with open questions get a "?" marker on the hunk and its
+    file row.
+  - **Submit with open questions** is allowed after a confirm step;
+    `review_complete` gains `unansweredQuestions` so the agent can answer
+    them in its summary (fixes M8's silent drop). A pending
+    `wait_for_activity` wakes immediately on `end_review`.
+  - **Waiting:** "Waiting for the agent…" under each pending question, no
+    timeout. On `review_ended`, open questions show "Not answered: the agent
+    ended the review" and the ask box is disabled.
+  - **Unread:** a count badge on the "?" button for unseen answers, a dot
+    while questions are waiting; the drawer never opens on its own.
+  - **Width:** resizable 280–560px, default 360px, saved as
+    `conversationWidth` in settings; the drawer starts closed each review.
+  - Out of scope: CLI reviews (no agent to answer), reply threading,
+    editing or deleting questions.
 - **M10** `diffmate install` (`.mcp.json` merge + slash command).
 - **M11** docs, real end-to-end test against an actual Claude Code session,
   publish v0.2.

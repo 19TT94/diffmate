@@ -149,16 +149,17 @@ async function handleRequest(
 
     if (method === 'POST' && pathname === '/api/questions') {
       const body = (await readJsonBody(req)) as {
-        hunkId?: string
+        hunkId?: string | null
         text?: string
       }
-      if (!body.hunkId || !body.text) {
-        sendJson(res, 400, { error: 'hunkId and text are required' })
+      if (!body.text) {
+        sendJson(res, 400, { error: 'text is required' })
         return
       }
       // Returns immediately without waiting for an answer: the question is
       // just enqueued for the MCP agent's next wait_for_activity poll.
-      const question = session.askQuestion(body.hunkId, body.text)
+      // No hunkId asks about the whole review.
+      const question = session.askQuestion(body.hunkId ?? null, body.text)
       sendJson(res, 202, { questionId: question.id })
       return
     }
@@ -256,6 +257,7 @@ function summarizeSession(session: ReviewSession) {
     files: session.files,
     title: session.title,
     summary: session.summary,
+    questions: session.questions,
     reviewComplete: session.reviewComplete,
   }
 }
