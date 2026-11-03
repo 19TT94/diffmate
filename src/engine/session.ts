@@ -67,6 +67,8 @@ export class ReviewSession {
   // without this class needing to change shape between the two.
   readonly bus: EventEmitter
   reviewComplete: boolean
+  // Set by end(): the agent is done, so open questions won't be answered.
+  reviewEnded: boolean
   // Hunk summaries that matched no hunk, kept so the agent can be told.
   readonly unmatchedSummaries: HunkSummaryInput[]
   // The review's one conversation, in the order questions were asked; each
@@ -93,6 +95,7 @@ export class ReviewSession {
     this.summary = agent.summary
     this.bus = new EventEmitter()
     this.reviewComplete = false
+    this.reviewEnded = false
     this.questions = []
     this.unmatchedSummaries = []
     // The agent lists summaries in the order a reviewer should walk the
@@ -202,6 +205,7 @@ export class ReviewSession {
   // The agent is done with this review (phase 2's end_review), whether or
   // not it was submitted. Lets the browser stop waiting on a dead session.
   end(reason: string | null): void {
+    this.reviewEnded = true
     this.bus.emit('review_ended', { sessionId: this.id, reason })
   }
 }

@@ -99,6 +99,7 @@ test('GET /api/session returns the session summary', async () => {
     assert.equal(body.id, session.id)
     assert.equal(body.mode, 'cli')
     assert.equal(body.reviewComplete, false)
+    assert.equal(body.reviewEnded, false)
     assert.equal(body.title, null)
     assert.equal(body.summary, null)
     assert.equal(body.files[0].hunks[0].status, 'pending')

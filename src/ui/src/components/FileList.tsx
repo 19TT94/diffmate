@@ -5,6 +5,7 @@ import styled, { css } from 'styled-components'
 // Components
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
+import { QuestionMarker } from './QuestionMarker'
 
 // Utils
 import { clampWidth, startDragResize } from '../lib/dragResize'
@@ -35,6 +36,8 @@ interface FileListProps {
   width?: number
   // Called once per drag, when it ends, to save the new width.
   onWidthChange: (width: number) => void
+  // Files with an unanswered question about one of their hunks.
+  openQuestionPaths?: ReadonlySet<string>
 }
 
 export function FileList({
@@ -44,6 +47,7 @@ export function FileList({
   onBulkSetStatus,
   width: savedWidth,
   onWidthChange,
+  openQuestionPaths,
 }: FileListProps) {
   // Simplest possible collapse for now — local, not persisted, no animation.
   const [collapsed, setCollapsed] = useState(false)
@@ -114,6 +118,7 @@ export function FileList({
                     <Name>{name}</Name>
                   </bdi>
                 </Path>
+                {openQuestionPaths?.has(file.path) && <QuestionMarker />}
                 <Stat>
                   <StatAdd>+{add}</StatAdd> <StatDel>-{del}</StatDel>
                 </Stat>
@@ -153,17 +158,22 @@ export function FileList({
 }
 
 // Style Overrides
+// Gives way below its set width before the hunk view does.
 const Nav = styled.nav<{ $collapsed: boolean }>`
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   ${({ $collapsed, theme }) =>
-    $collapsed &&
-    css`
-      width: ${theme.spacing[2]};
-    `}
-  flex: none;
+    $collapsed
+      ? css`
+          width: ${theme.spacing[2]};
+          flex: none;
+        `
+      : css`
+          flex: 0 1 auto;
+          min-width: 160px;
+        `}
   overflow: visible;
   border-right: 1px solid ${({ theme }) => theme.colors.border};
   background: ${({ theme }) => theme.colors.background};

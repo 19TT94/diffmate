@@ -1,7 +1,8 @@
 import styled from 'styled-components'
 
 // Components
-import { Panel, PanelText } from './ui/Panel'
+import { Markdown } from './Markdown'
+import { Panel, PanelProse } from './ui/Panel'
 
 // Types
 import type { SessionMode } from '../types'
@@ -25,7 +26,11 @@ export function AgentContext({ mode, title, summary }: AgentContextProps) {
         name="summary"
         title={title ?? 'Summary'}
       >
-        {summary && <PanelText>{summary}</PanelText>}
+        {summary && (
+          <PanelProse>
+            <Markdown>{summary}</Markdown>
+          </PanelProse>
+        )}
       </Panel>
     </Wrap>
   )

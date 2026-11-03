@@ -74,4 +74,17 @@ describe('AgentContext', () => {
 
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('renders the summary as Markdown', () => {
+    const { container } = renderWithTheme(
+      <AgentContext
+        mode="mcp"
+        title="T"
+        summary={'Adds `size` to **Button**.'}
+      />,
+    )
+
+    expect(container.querySelector('code')).toHaveTextContent('size')
+    expect(container.querySelector('strong')).toHaveTextContent('Button')
+  })
 })
