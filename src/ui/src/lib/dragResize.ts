@@ -7,6 +7,8 @@ interface DragResizeOptions {
   onChange: (width: number) => void
   // Called once on mouseup with the final width, e.g. to persist it.
   onEnd?: (width: number) => void
+  // Which edge the handle sits on; a left-edge handle grows as it moves left.
+  edge?: 'left' | 'right'
 }
 
 export function clampWidth(width: number, min: number, max: number): number {
@@ -17,14 +19,19 @@ export function clampWidth(width: number, min: number, max: number): number {
 // reporting the clamped width as the pointer moves.
 export function startDragResize(
   event: ReactMouseEvent,
-  { startWidth, min, max, onChange, onEnd }: DragResizeOptions,
+  { startWidth, min, max, onChange, onEnd, edge = 'right' }: DragResizeOptions,
 ): void {
   event.preventDefault()
   const startX = event.clientX
   let width = startWidth
 
   function handleMouseMove(moveEvent: MouseEvent): void {
-    width = clampWidth(startWidth + (moveEvent.clientX - startX), min, max)
+    const delta = moveEvent.clientX - startX
+    width = clampWidth(
+      startWidth + (edge === 'left' ? -delta : delta),
+      min,
+      max,
+    )
     onChange(width)
   }
   function handleMouseUp(): void {

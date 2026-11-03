@@ -47,7 +47,7 @@ diffmate/
     engine/httpServer.ts        # local HTTP server: REST + SSE + static UI
     engine/output.ts            # final markdown/JSON feedback builder
     engine/types.ts             # File, Hunk, Question, Session, Events
-    install/installClaudeCode.ts # `diffmate install`: .mcp.json + slash cmd
+    install/                    # `diffmate install`: MCP config + diffmate-review skill
     ui/                          # React + TypeScript + styled-components
       package.json / tsconfig*.json / vite.config.ts / eslint.config.js
       src/main.tsx, App.tsx, components/, components/ui/, hooks/, lib/,
@@ -206,7 +206,8 @@ v1 (a second `start_review` while one is active errors clearly).
 
 Tools:
 
-- **`start_review`** `{ base?, staged?, title?, summary?, hunkSummaries? }`
+- **`start_review`** `{ base?, staged?, branch?, title?, summary?,
+hunkSummaries? }`
   → builds the session (`mode: 'mcp'`), starts the server, opens the
   browser, returns immediately (non-blocking) with `{ sessionId, url,
 fileCount, hunkCount, unmatchedSummaries }`. `title`/`summary` are
@@ -217,7 +218,13 @@ fileCount, hunkCount, unmatchedSummaries }`. `title`/`summary` are
   in the order they first appear (unlisted files last, in git order), a
   file's hunks stay in diff order, and each summary says how its change
   leads into the next. Entries that are malformed or match no hunk come
-  back in `unmatchedSummaries` instead of failing the call.
+  back in `unmatchedSummaries` instead of failing the call. `summary` is
+  optional: an entry without one only places its file in the walkthrough.
+  `branch` reviews a branch against `base` (default: the repo's default
+  branch): the worktree it's checked out in, uncommitted changes included,
+  or, when it isn't checked out, the committed `base...branch` diff with file
+  contents read via `git show` and a read-only file pane. diffmate never
+  fetches or checks out.
 - **`wait_for_activity`** `{ sessionId, timeoutSeconds? (~20-25 default) }`
   → long-poll on the session's bus. Returns `{ type: 'no_activity',
 pending, decided, idleSeconds }` (agent calls again immediately — this is
@@ -257,21 +264,39 @@ one, invalid values are a 400). The browser's own storage can't do this:
 each review serves on a new port, which is a new origin. This file is the
 only thing a review writes, and it lives outside the repo.
 
-Installation (`diffmate install`):
+Installation (`diffmate install [--client claude|cursor]`, both by default;
+see #46):
 
-1. Merge a `diffmate` entry into project-root `.mcp.json`
-   (`{ "command": "npx", "args": ["diffmate", "mcp"] }`), creating it if
-   absent.
-2. Write `.claude/commands/diffmate-review.md` as a **project-local** slash
-   command (deliberately not global like the reference tool's
-   `~/.claude/commands/` — the MCP registration is project-scoped, so a
-   global command would break in repos without it). It instructs the exact
-   loop: `start_review` → loop `wait_for_activity` → on `question`, answer
-   from the agent's own knowledge of why it made that change, call
-   `answer_question`, loop again; on `no_activity`, loop again without
-   narrating; on `review_complete`, stop, leave approved hunks untouched,
-   address every rejected hunk (comment = the requested change), factor in
-   comments on pending hunks, call `end_review`, summarize what changed.
+1. Merge a `diffmate` entry (`{ "command": "npx", "args": ["diffmate",
+"mcp"] }`) into the project's MCP config — `.mcp.json` for Claude Code,
+   `.cursor/mcp.json` for Cursor — creating it if absent and keeping other
+   servers. Re-running is safe.
+2. Write one **project-local** `diffmate-review` skill —
+   `.claude/skills/diffmate-review/SKILL.md` and
+   `.cursor/skills/diffmate-review/SKILL.md` — rendered from a single source
+   in `src/install/` with each client's frontmatter (project-local because
+   the MCP registration is). The skill picks the target from the request:
+   - **Nothing named:** the uncommitted changes; if there are none, ask.
+   - **A branch:** `start_review({ branch, base })`.
+   - **A PR URL:** `gh pr view` gives the head and base branches. If the head
+     isn't local, the agent fetches it as a local branch (asking first), then
+     reviews it as a branch, and afterwards offers to delete what it
+     fetched.
+
+   It then runs the loop: `start_review` → loop `wait_for_activity` → on
+   `question`, answer and loop; on `no_activity`, loop without narrating; on
+   `review_complete`, stop. For the agent's own changes: leave approved
+   hunks untouched, address every rejected hunk (comment = the requested
+   change), factor in comments on pending hunks, call `end_review`, and
+   summarize what changed. For code it didn't write (a PR or someone else's
+   branch): hunk summaries only where something is worth pointing out; after
+   the review, draft a GitHub review (inline comments for rejected and
+   commented hunks; "Request changes" if anything was rejected, else
+   "Comment") and ask before posting. It never edits or pushes that branch
+   unless asked.
+
+A Claude Code plugin bundling the server and skill is a separate spike
+(#47).
 
 ## Build order
 
@@ -327,9 +352,17 @@ Installation (`diffmate install`):
     while questions are waiting; the drawer never opens on its own.
   - **Width:** resizable 280–560px, default 360px, saved as
     `conversationWidth` in settings; the drawer starts closed each review.
+  - **Agent text is Markdown:** answers, the review summary and hunk
+    Explanations render a safe subset (code with the diff's highlighting,
+    lists, emphasis, links in a new tab); raw HTML shows as text. The
+    reviewer's questions stay plain.
+  - **Submit hands off to the chat:** submitting tries to close the tab;
+    if the browser refuses, the page says the review went to the agent.
+    There's no asking after submit.
   - Out of scope: CLI reviews (no agent to answer), reply threading,
     editing or deleting questions.
-- **M10** `diffmate install` (`.mcp.json` merge + slash command).
+- **M10** `diffmate install` (MCP config + `diffmate-review` skill for
+  Claude Code and Cursor) and `start_review`'s `branch` target (#46).
 - **M11** docs, real end-to-end test against an actual Claude Code session,
   publish v0.2.
 
@@ -369,7 +402,7 @@ install` should document (or attempt to configure) auto-approval for
   (approved-no-comment excluded, rejected always shown, etc). Test
   `--staged` and `--base <ref>` scopes, and an untracked-file case.
 - **Phase 2**: register the MCP server against a real Claude Code session
-  in a scratch repo, run `/diffmate-review`, ask a question from the
+  in a scratch repo, run the `diffmate-review` skill, ask a question from the
   browser mid-review, confirm the answer round-trips back to the correct
   hunk's thread, submit, and confirm the agent's loop terminates on
   `review_complete` and acts only on rejected/commented hunks.

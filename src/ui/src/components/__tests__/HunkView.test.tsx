@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -26,7 +26,6 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     summary: null,
     comment: null,
     editedContent: null,
-    questions: [],
     ...overrides,
   }
 }
@@ -50,6 +49,7 @@ function renderHunkView(
       onPrev={null}
       onNext={null}
       position={{ index: 0, total: 1 }}
+      hasOpenQuestions={false}
       {...overrides}
     />,
   )
@@ -193,6 +193,51 @@ describe('HunkView', () => {
     expect(document.body.textContent).toContain(
       'Added size prop so toolbar buttons can stay compact without a one-off override.',
     )
+  })
+
+  it('renders the Explanation as Markdown', () => {
+    renderHunkView({
+      hunk: fixtureHunk({ summary: 'Feeds `useGroups` into **Page**.' }),
+    })
+
+    const explanation = screen.getByRole('region', { name: /Explanation/ })
+    expect(explanation.querySelector('code')).toHaveTextContent('useGroups')
+    expect(explanation.querySelector('strong')).toHaveTextContent('Page')
+  })
+
+  it('marks a hunk with an unanswered question in its toolbar', () => {
+    const { rerender } = renderHunkView({ hasOpenQuestions: true })
+    const toolbar = () => screen.getByRole('toolbar', { name: 'Hunk actions' })
+    expect(
+      within(toolbar()).getByTitle('Waiting on an answer from the agent'),
+    ).toHaveTextContent('?')
+
+    rerender(
+      <HunkView
+        hunk={fixtureHunk()}
+        filePath="a.ts"
+        isFocused={false}
+        onFocus={() => {}}
+        onSetStatus={() => {}}
+        onFileChange={() => {}}
+        fileContent={null}
+        fileContentError={null}
+        fileContentLoading={false}
+        layout="side-by-side"
+        onLayoutChange={() => {}}
+        onPrev={null}
+        onNext={null}
+        position={{ index: 0, total: 1 }}
+        hasOpenQuestions={false}
+      />,
+    )
+    expect(
+      within(toolbar()).queryByTitle('Waiting on an answer from the agent'),
+    ).toBeNull()
+    // Asking isn't a decision: the hunk is still pending.
+    expect(
+      within(toolbar()).getByRole('button', { name: 'Approve' }),
+    ).toBeTruthy()
   })
 
   it('hides the summary block when summary is null', () => {

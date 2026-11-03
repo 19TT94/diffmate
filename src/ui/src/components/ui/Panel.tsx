@@ -150,14 +150,9 @@ export function Panel({
   )
 }
 
-// Padded, wrapping prose for a panel body (summaries, explanations).
-export const PanelText = styled.p`
-  margin: 0;
+// Padding for a panel body of agent prose (rendered as Markdown).
+export const PanelProse = styled.div`
   padding: ${({ theme }) => theme.spacing[3]};
-  color: ${({ theme }) => theme.colors.secondary};
-  font-size: ${({ theme }) => theme.fontSizes.sm};
-  line-height: 1.5;
-  white-space: pre-wrap;
 `
 
 // Style Overrides

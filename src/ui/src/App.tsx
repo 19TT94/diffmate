@@ -3,9 +3,10 @@ import styled from 'styled-components'
 
 // Components
 import { AgentContext } from './components/AgentContext'
-import { Banner } from './components/Banner'
+import { ConversationDrawer } from './components/ConversationDrawer'
 import { FileList } from './components/FileList'
 import { HunkStepper } from './components/HunkStepper'
+import { SubmitConfirm } from './components/SubmitConfirm'
 import { TopBar } from './components/TopBar'
 
 // Hooks
@@ -15,6 +16,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 // Utils
 import { adjacentHunkIds, findNextPendingHunkId } from './lib/hunkNav'
+import { isOpen, openQuestionHunkIds, openQuestionPaths } from './lib/questions'
 
 // Types
 import type { DiffLayout, HunkStatus, ReviewFile } from './types'
@@ -25,10 +27,28 @@ const App = () => {
     focusedHunkId,
     setFocusedHunkId,
     setHunkStatus,
+    askQuestion,
     submitReview,
   } = useReviewSession()
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('side-by-side')
+  const [conversationOpen, setConversationOpen] = useState(false)
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false)
+  // Answers the reviewer has had the drawer open for; the rest are unseen.
+  const [seenAnswerIds, setSeenAnswerIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const { settings, updateSettings } = useSettings()
+
+  const questions = session?.questions ?? []
+  const answeredIds = questions
+    .filter((question) => !isOpen(question))
+    .map((question) => question.id)
+  const unseen = answeredIds.filter((id) => !seenAnswerIds.has(id)).length
+  // While the drawer is open every answer is in view, so mark it seen.
+  if (conversationOpen && unseen > 0) {
+    setSeenAnswerIds(new Set(answeredIds))
+  }
+  const openQuestions = questions.filter(isOpen).length
 
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =
@@ -77,25 +97,54 @@ const App = () => {
     for (const hunk of file.hunks) setHunkStatus(hunk.id, status)
   }
 
+  // Open questions get one confirm step; the agent answers them in its
+  // summary instead.
+  function requestSubmit(): void {
+    if (openQuestions > 0) setConfirmingSubmit(true)
+    else submitReview()
+  }
+
+  function confirmSubmit(): void {
+    setConfirmingSubmit(false)
+    submitReview()
+  }
+
   useKeyboardShortcuts({
     hunkIdsByFile,
     focusedHunkId,
     onFocusHunk: setFocusedHunkId,
     onSetStatus: handleSetStatus,
     onFocusComment,
-    onSubmit: submitReview,
+    onSubmit: requestSubmit,
   })
 
   if (!session) {
     return <Loading>Loading…</Loading>
   }
 
+  // Submit tries to close the tab; this is what's left if the browser won't.
+  if (session.reviewComplete) {
+    return <Loading>Review sent to the agent. You can close this tab.</Loading>
+  }
+
+  const hasAgent = session.mode === 'mcp'
+
   return (
     <Shell>
       <TopBar
         hunks={flatHunks}
         reviewComplete={session.reviewComplete}
-        onSubmit={submitReview}
+        onSubmit={requestSubmit}
+        conversation={
+          hasAgent
+            ? {
+                open: conversationOpen,
+                unseen,
+                waiting: openQuestions > 0 && !session.reviewEnded,
+                onToggle: () => setConversationOpen((open) => !open),
+              }
+            : null
+        }
       />
       <Layout>
         <FileList
@@ -105,6 +154,7 @@ const App = () => {
           onBulkSetStatus={handleBulkSetStatus}
           width={settings.fileListWidth}
           onWidthChange={(width) => updateSettings({ fileListWidth: width })}
+          openQuestionPaths={openQuestionPaths(session.files, questions)}
         />
         <FileView>
           <AgentContext
@@ -123,6 +173,9 @@ const App = () => {
               onSetStatus={handleSetStatus}
               layout={diffLayout}
               onLayoutChange={setDiffLayout}
+              hasOpenQuestions={openQuestionHunkIds(questions).has(
+                currentEntry.hunk.id,
+              )}
             />
           ) : (
             <EmptyState>
@@ -130,8 +183,28 @@ const App = () => {
             </EmptyState>
           )}
         </FileView>
+        {hasAgent && conversationOpen && (
+          <ConversationDrawer
+            questions={questions}
+            files={session.files}
+            focusedHunkId={focusedHunkId}
+            ended={session.reviewEnded}
+            onAsk={askQuestion}
+            onSelectHunk={setFocusedHunkId}
+            width={settings.conversationWidth}
+            onWidthChange={(width) =>
+              updateSettings({ conversationWidth: width })
+            }
+          />
+        )}
       </Layout>
-      {session.reviewComplete && <Banner>Review submitted.</Banner>}
+      {confirmingSubmit && (
+        <SubmitConfirm
+          openQuestions={openQuestions}
+          onCancel={() => setConfirmingSubmit(false)}
+          onConfirm={confirmSubmit}
+        />
+      )}
     </Shell>
   )
 }
@@ -149,8 +222,10 @@ const Layout = styled.div`
   min-height: 0;
 `
 
+// The side panels shrink first; this keeps the diff readable when they can't.
 const FileView = styled.main`
   flex: 1;
+  min-width: 360px;
   min-height: 0;
   display: flex;
   flex-direction: column;

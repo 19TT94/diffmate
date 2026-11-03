@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 // Utils
 import {
+  askQuestion as apiAskQuestion,
   connectEvents,
   fetchSession,
   setHunkComment as apiSetHunkComment,
@@ -81,8 +82,20 @@ export function useReviewSession() {
     [refresh],
   )
 
+  const askQuestion = useCallback(
+    async (hunkId: string | null, text: string) => {
+      await apiAskQuestion(hunkId, text)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  // The review goes back to the agent's chat, so the tab has nothing left
+  // to do. Browsers may refuse to close a tab they didn't open by script;
+  // the submitted screen covers that case.
   const submitReview = useCallback(async () => {
     await apiSubmitReview()
+    window.close()
     await refresh()
   }, [refresh])
 
@@ -93,6 +106,7 @@ export function useReviewSession() {
     setHunkStatus,
     setHunkComment,
     setHunkEditedContent,
+    askQuestion,
     submitReview,
   }
 }

@@ -17,6 +17,8 @@ const HUNK_STATUS_RE = /^\/api\/hunks\/([^/]+)\/status$/
 const HUNK_COMMENT_RE = /^\/api\/hunks\/([^/]+)\/comment$/
 const HUNK_EDIT_RE = /^\/api\/hunks\/([^/]+)\/edit$/
 const FILE_NOTES_RE = /^\/api\/files\/([^/]+)\/notes$/
+// How long the stand-in agent takes to answer a question.
+const DEMO_ANSWER_DELAY_MS = 1500
 
 // In memory only, so the dev server never touches the real settings file
 // (and starts from defaults on each restart). No validation: the real
@@ -36,9 +38,19 @@ interface DemoFile {
   hunks: DemoHunk[]
 }
 
+interface DemoQuestion {
+  id: string
+  hunkId: string | null
+  text: string
+  askedAt: number
+  answer: string | null
+  answeredAt: number | null
+}
+
 interface DemoSession {
   id: string
   files: DemoFile[]
+  questions: DemoQuestion[]
   reviewComplete: boolean
   [key: string]: unknown
 }
@@ -134,6 +146,34 @@ async function handle(
     res.write(':ok\n\n')
     clients.add(res)
     req.on('close', () => clients.delete(res))
+    return
+  }
+
+  // No agent here: every question gets a canned Markdown answer shortly
+  // after, so the conversation drawer can be exercised.
+  if (method === 'POST' && pathname === '/api/questions') {
+    const body = (await readJsonBody(req)) as {
+      hunkId?: string
+      text?: string
+    }
+    const question: DemoQuestion = {
+      id: `demo-q${session.questions.length + 1}`,
+      hunkId: body.hunkId ?? null,
+      text: body.text ?? '',
+      askedAt: Date.now(),
+      answer: null,
+      answeredAt: null,
+    }
+    session.questions.push(question)
+    emit('question_asked', question)
+    setTimeout(() => {
+      question.answer =
+        'A canned **demo** answer. The real agent replies here, e.g. it ' +
+        'calls `Button` with `size="sm"`:\n\n```tsx\n<Button size="sm" />\n```'
+      question.answeredAt = Date.now()
+      emit('question_answered', question)
+    }, DEMO_ANSWER_DELAY_MS)
+    sendJson(res, 202, { questionId: question.id })
     return
   }
 

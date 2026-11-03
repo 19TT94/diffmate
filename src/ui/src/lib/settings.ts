@@ -23,9 +23,10 @@ export function mergeSettings(
     else delete next.colors
   }
 
-  if (patch.fileListWidth === null) delete next.fileListWidth
-  else if (patch.fileListWidth !== undefined) {
-    next.fileListWidth = patch.fileListWidth
+  for (const key of ['fileListWidth', 'conversationWidth'] as const) {
+    const value = patch[key]
+    if (value === null) delete next[key]
+    else if (value !== undefined) next[key] = value
   }
   return next
 }
