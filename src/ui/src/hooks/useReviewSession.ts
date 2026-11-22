@@ -34,6 +34,8 @@ export function flattenHunks(session: ReviewSessionSummary | null): FlatHunk[] {
 export function useReviewSession() {
   const [session, setSession] = useState<ReviewSessionSummary | null>(null)
   const [focusedHunkId, setFocusedHunkId] = useState<string | null>(null)
+  // Questions sent but not yet in `session`; they're open questions too.
+  const [sendingQuestions, setSendingQuestions] = useState(0)
 
   const refresh = useCallback(async () => {
     const next = await fetchSession()
@@ -84,8 +86,13 @@ export function useReviewSession() {
 
   const askQuestion = useCallback(
     async (hunkId: string | null, text: string) => {
-      await apiAskQuestion(hunkId, text)
-      await refresh()
+      setSendingQuestions((count) => count + 1)
+      try {
+        await apiAskQuestion(hunkId, text)
+        await refresh()
+      } finally {
+        setSendingQuestions((count) => count - 1)
+      }
     },
     [refresh],
   )
@@ -107,6 +114,7 @@ export function useReviewSession() {
     setHunkComment,
     setHunkEditedContent,
     askQuestion,
+    sendingQuestions,
     submitReview,
   }
 }

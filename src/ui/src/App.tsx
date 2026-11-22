@@ -28,6 +28,7 @@ const App = () => {
     setFocusedHunkId,
     setHunkStatus,
     askQuestion,
+    sendingQuestions,
     submitReview,
   } = useReviewSession()
   const [diffLayout, setDiffLayout] = useState<DiffLayout>('side-by-side')
@@ -48,7 +49,7 @@ const App = () => {
   if (conversationOpen && unseen > 0) {
     setSeenAnswerIds(new Set(answeredIds))
   }
-  const openQuestions = questions.filter(isOpen).length
+  const openQuestions = questions.filter(isOpen).length + sendingQuestions
 
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =

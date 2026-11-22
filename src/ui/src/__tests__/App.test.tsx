@@ -229,6 +229,43 @@ describe('App submit', () => {
     expect(api.submitReview).toHaveBeenCalledTimes(1)
   })
 
+  it('counts a question the server has not confirmed yet', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.askQuestion).mockReturnValue(new Promise(() => {}))
+    await renderApp(fixtureSession())
+
+    await user.click(conversationButton())
+    await user.type(
+      screen.getByRole('textbox', { name: 'Question' }),
+      'Why?{Enter}',
+    )
+    await user.click(screen.getByRole('button', { name: /Submit review/ }))
+
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(
+      "1 question hasn't been answered.",
+    )
+    expect(api.submitReview).not.toHaveBeenCalled()
+  })
+
+  it('keeps focus where the reviewer put it while the confirm is open', async () => {
+    const user = userEvent.setup()
+    await renderApp(fixtureSession({ questions: [question()] }))
+
+    await user.click(screen.getByRole('button', { name: /Submit review/ }))
+    const cancel = within(screen.getByRole('alertdialog')).getByRole('button', {
+      name: 'Cancel',
+    })
+    cancel.focus()
+    await pushSession(
+      fixtureSession({ questions: [question(), question({ id: 'q2' })] }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toHaveTextContent('2 questions')
+    })
+    expect(cancel).toHaveFocus()
+  })
+
   it('submits straight away with no open questions', async () => {
     const user = userEvent.setup()
     await renderApp(fixtureSession())

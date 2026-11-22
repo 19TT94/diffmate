@@ -20,8 +20,12 @@ export function SubmitConfirm({
   const messageId = useId()
   const confirmRef = useRef<HTMLButtonElement>(null)
 
+  // Only on open: a later re-render mustn't pull focus off Cancel.
   useEffect(() => {
     confirmRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') onCancel()
     }
