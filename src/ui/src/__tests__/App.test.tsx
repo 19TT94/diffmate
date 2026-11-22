@@ -266,6 +266,25 @@ describe('App submit', () => {
     expect(cancel).toHaveFocus()
   })
 
+  it('closes the confirm without submitting once the last answer arrives', async () => {
+    const user = userEvent.setup()
+    await renderApp(fixtureSession({ questions: [question()] }))
+
+    await user.click(screen.getByRole('button', { name: /Submit review/ }))
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    await pushSession(
+      fixtureSession({
+        questions: [question({ answer: 'Because.', answeredAt: 2 })],
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).toBeNull()
+    })
+    expect(api.submitReview).not.toHaveBeenCalled()
+    expect(screen.getByRole('toolbar', { name: 'Hunk actions' })).toBeTruthy()
+  })
+
   it('submits straight away with no open questions', async () => {
     const user = userEvent.setup()
     await renderApp(fixtureSession())

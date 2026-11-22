@@ -50,6 +50,11 @@ const App = () => {
     setSeenAnswerIds(new Set(answeredIds))
   }
   const openQuestions = questions.filter(isOpen).length + sendingQuestions
+  // The confirm only asks about open questions; once they're all answered
+  // there's nothing to confirm, so the reviewer just submits again.
+  if (confirmingSubmit && openQuestions === 0) {
+    setConfirmingSubmit(false)
+  }
 
   const flatHunks = flattenHunks(session)
   const hunkIdsByFile =
