@@ -61,6 +61,17 @@ test('parseArgs accepts future mcp and install subcommands', () => {
   assert.equal(parseArgs(['install']).subcommand, 'install')
 })
 
+test('parseArgs reads install --client and rejects unknown clients', () => {
+  assert.equal(parseArgs(['install']).client, null)
+  assert.equal(parseArgs(['install', '--client', 'claude']).client, 'claude')
+  assert.equal(parseArgs(['install', '--client=cursor']).client, 'cursor')
+  assert.throws(
+    () => parseArgs(['install', '--client', 'codex']),
+    /Unknown --client: codex \(expected claude or cursor\)/,
+  )
+  assert.throws(() => parseArgs(['install', '--client']), /Missing value/)
+})
+
 test('parseArgs rejects an unexpected extra positional', () => {
   assert.throws(
     () => parseArgs(['review', '/tmp/example', 'extra']),

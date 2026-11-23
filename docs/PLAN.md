@@ -121,9 +121,13 @@ Never mutate git state (no `git add -N`, no touching the index).
   pseudo-hunk (whole file read via `fs.readFileSync`, rendered as one
   "all lines added" hunk) rather than invoked through git.
 - `--staged`: `git --no-pager diff --no-color -U3 --cached`.
-- `--base <ref>`: `git --no-pager diff --no-color -U3 <ref>...` (triple-dot
-  merge-base semantics, so a feature branch diffs correctly even if the
-  base has moved on).
+- `--base <ref>`: `git --no-pager diff --no-color -U3 --merge-base <ref>`
+  (the merge-base against the working tree, so a feature branch diffs
+  correctly even if the base has moved on, uncommitted edits included).
+- `branch` (MCP `start_review` only): if `git worktree list --porcelain`
+  shows the branch checked out, the `--base` diff run in that worktree plus
+  its untracked files; otherwise `git diff <base>...<branch>` from the
+  server's repo, with file contents from `git show <branch>:<path>`.
 
 Always `execFile` (never `exec`), `cwd` resolved via
 `git rev-parse --show-toplevel`, fail fast with a clear message outside a
@@ -363,6 +367,9 @@ A Claude Code plugin bundling the server and skill is a separate spike
     editing or deleting questions.
 - **M10** `diffmate install` (MCP config + `diffmate-review` skill for
   Claude Code and Cursor) and `start_review`'s `branch` target (#46).
+  Built: the review header shows the branch (and its worktree), and a
+  branch with no worktree is read-only (`readOnly` in `/api/session`;
+  edits and file notes are refused with a 409).
 - **M11** docs, real end-to-end test against an actual Claude Code session,
   publish v0.2.
 
@@ -378,9 +385,9 @@ A Claude Code plugin bundling the server and skill is a separate spike
   `idleSeconds` and the tool description tells the agent to stop looping
   after ~10 idle minutes and hand the user the URL.
 - **Tool-approval prompt fatigue** — if `wait_for_activity` isn't
-  allowlisted, Claude Code may prompt for approval every ~20s. `diffmate
-install` should document (or attempt to configure) auto-approval for
-  diffmate's tools.
+  allowlisted, Claude Code may prompt for approval every ~20s. The Claude
+  Code skill `diffmate install` writes lists diffmate's four tools in
+  `allowed-tools`; Cursor has no equivalent, so it may still prompt.
 - **Browser tab closed mid-review** — no reliable close signal. Detect SSE
   disconnect but don't auto-complete the review on it (that would make
   `wait_for_activity` loop `no_activity` forever with no exit); add an idle

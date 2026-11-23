@@ -11,6 +11,8 @@ interface FileEditorProps {
   filePath: string
   hunk: Hunk
   onDocChanged: (content: string) => void
+  // The branch isn't checked out, so there's nothing to edit against.
+  readOnly?: boolean
 }
 
 // The whole-file editable editor (right review pane). Keyed by file path at
@@ -22,6 +24,7 @@ export function FileEditor({
   filePath,
   hunk,
   onDocChanged,
+  readOnly = false,
 }: FileEditorProps) {
   return (
     <CodeEditor
@@ -30,6 +33,7 @@ export function FileEditor({
       content={content}
       hunkSpan={reviewSpanForHunk(hunk)}
       onDocChanged={onDocChanged}
+      locked={readOnly}
     />
   )
 }

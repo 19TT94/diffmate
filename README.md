@@ -17,6 +17,25 @@ entry point and the Claude Code MCP server (phase 2) are still to come. See
 layout, the phase 1 (harness-agnostic CLI review) and phase 2 (Claude
 Code MCP live Q&A) build plan, and open risks.
 
+## Use it in a project
+
+From the project you want to review in:
+
+```bash
+npx diffmate install                  # Claude Code and Cursor
+npx diffmate install --client claude  # or just one
+```
+
+This writes the MCP server entry (`.mcp.json`, `.cursor/mcp.json`) and a
+project-local `diffmate-review` skill. Existing MCP servers are kept, and
+re-running is safe. Then ask the agent to "review this with diffmate"
+(your uncommitted changes), "review branch feat/x", or "review
+<PR URL>". A branch checked out in a worktree is reviewed there,
+uncommitted changes included; any other branch is reviewed read-only from
+its commits. diffmate never fetches, checks out, or changes git state: for a
+PR, the agent asks before fetching it as a local branch, and asks before
+posting a GitHub review.
+
 ## Why
 
 Existing tools (`agent-diff-view` and similar) already nail side-by-side

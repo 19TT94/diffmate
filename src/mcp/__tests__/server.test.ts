@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { test } from 'node:test'
+import { promisify } from 'node:util'
 
 // MCP
-import { connectLinked, makeRepo, makeUi, withRepoChange } from './helpers.js'
+import {
+  connectLinked,
+  makeRepo,
+  makeUi,
+  reviewHelpers,
+  withRepoChange,
+} from './helpers.js'
+
+const execFileAsync = promisify(execFile)
 
 // Each test drives its own cwd (SessionController resolves the diff against
 // process.cwd(), exactly as the stdio server does when Claude Code spawns
@@ -250,7 +260,7 @@ test('start_review reports malformed hunkSummaries back and applies the rest', a
         { path: 'tracked.txt', hunk: 0, summary: 'zero' },
         { path: 'tracked.txt', hunk: 1.5, summary: 'fraction' },
         { path: 7, hunk: 1, summary: 'numeric path' },
-        { path: 'tracked.txt', hunk: 1 },
+        { path: 'tracked.txt', hunk: 1, summary: 42 },
       ]
       const result = await linked.client.callTool({
         name: 'start_review',
@@ -274,6 +284,85 @@ test('start_review reports malformed hunkSummaries back and applies the rest', a
         await fetch(`${parsed.origin}/api/session?token=${token}`)
       ).json()
       assert.equal(body.files[0].hunks[0].summary, 'Changed line two.')
+    } finally {
+      await linked.close()
+    }
+  })
+})
+
+test('start_review accepts a hunkSummaries entry without a summary', async () => {
+  await withRepoChange(async (_dir, uiDir) => {
+    const linked = await connectLinked(uiDir)
+    try {
+      const result = await linked.client.callTool({
+        name: 'start_review',
+        arguments: { hunkSummaries: [{ path: 'tracked.txt', hunk: 1 }] },
+      })
+      assert.ok(!result.isError)
+      const started = result.structuredContent as {
+        url: string
+        unmatchedSummaries: unknown[]
+      }
+      assert.deepEqual(started.unmatchedSummaries, [])
+
+      const parsed = new URL(started.url)
+      const token = parsed.searchParams.get('token') ?? ''
+      const body = await (
+        await fetch(`${parsed.origin}/api/session?token=${token}`)
+      ).json()
+      assert.equal(body.files[0].hunks[0].summary, null)
+    } finally {
+      await linked.close()
+    }
+  })
+})
+
+test('start_review reviews a branch that is not checked out, read-only', async () => {
+  await withRepoChange(async (dir, uiDir) => {
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: dir })
+    await git('stash', '-q')
+    await git('switch', '-q', '-c', 'feat')
+    await writeFile(path.join(dir, 'tracked.txt'), 'line one\nfeat change\n')
+    await git('commit', '-q', '-am', 'feat commit')
+    await git('switch', '-q', 'master')
+
+    const linked = await connectLinked(uiDir)
+    try {
+      const result = await linked.client.callTool({
+        name: 'start_review',
+        arguments: { branch: 'feat', base: 'master' },
+      })
+      assert.ok(!result.isError)
+      const review = reviewHelpers(
+        linked,
+        result.structuredContent as { sessionId: string; url: string },
+      )
+
+      const body = await (await review.api('/api/session')).json()
+      assert.equal(body.scope.branch, 'feat')
+      assert.equal(body.scope.base, 'master')
+      assert.equal(body.readOnly, true)
+
+      const hunkId = await review.hunkId()
+      const edit = await review.api(
+        `/api/hunks/${encodeURIComponent(hunkId)}/edit`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editedContent: 'changed' }),
+        },
+      )
+      assert.equal(edit.status, 409)
+      const notes = await review.api('/api/files/tracked.txt/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: 'changed' }),
+      })
+      assert.equal(notes.status, 409)
+
+      const after = await (await review.api('/api/session')).json()
+      assert.equal(after.files[0].hunks[0].editedContent, null)
+      assert.equal(after.files[0].notes, null)
     } finally {
       await linked.close()
     }

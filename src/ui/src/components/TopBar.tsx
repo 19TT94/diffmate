@@ -6,6 +6,7 @@ import { SettingsMenu } from './SettingsMenu'
 
 // Types
 import type { FlatHunk } from '../hooks/useReviewSession'
+import type { DiffScope } from '../types'
 
 // The "?" button's state; MCP reviews only (a CLI review has no agent).
 export interface ConversationToggle {
@@ -19,6 +20,7 @@ export interface ConversationToggle {
 
 interface TopBarProps {
   hunks: FlatHunk[]
+  scope: DiffScope
   reviewComplete: boolean
   onSubmit: () => void
   conversation: ConversationToggle | null
@@ -26,6 +28,7 @@ interface TopBarProps {
 
 export function TopBar({
   hunks,
+  scope,
   reviewComplete,
   onSubmit,
   conversation,
@@ -44,6 +47,12 @@ export function TopBar({
   return (
     <Bar>
       <Brand>diffmate</Brand>
+      {scope.branch && (
+        <Branch>
+          {scope.branch} → {scope.base}
+          {scope.worktree && <Worktree>{scope.worktree}</Worktree>}
+        </Branch>
+      )}
       <Counts>
         <Count $tone="success">{approved} approved</Count>
         <Count $tone="danger">{rejected} rejected</Count>
@@ -81,6 +90,24 @@ export function TopBar({
 }
 
 // Style Overrides
+const Branch = styled.span`
+  display: inline-flex;
+  align-items: baseline;
+  gap: ${({ theme }) => theme.spacing[2]};
+  min-width: 0;
+  font-family: ${({ theme }) => theme.fonts.mono};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  color: ${({ theme }) => theme.colors.secondary};
+  white-space: nowrap;
+`
+
+const Worktree = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  color: ${({ theme }) => theme.colors.muted};
+`
+
 const Bar = styled.header`
   display: flex;
   align-items: center;

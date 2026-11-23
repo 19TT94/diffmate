@@ -38,6 +38,7 @@ function fixtureSession(
     summary: null,
     reviewComplete: false,
     reviewEnded: false,
+    readOnly: false,
     questions: [],
     files: [
       {
@@ -312,5 +313,49 @@ describe('App submit', () => {
     ).toBeTruthy()
     expect(screen.queryByRole('toolbar', { name: 'Hunk actions' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Submit review/ })).toBeNull()
+  })
+})
+
+describe('App branch review', () => {
+  it('shows the branch against its base, plus its worktree', async () => {
+    await renderApp(
+      fixtureSession({
+        scope: { branch: 'feat/x', base: 'main', worktree: '/repos/x-wt' },
+      }),
+    )
+
+    const banner = screen.getByRole('banner')
+    expect(banner).toHaveTextContent('feat/x → main')
+    expect(banner).toHaveTextContent('/repos/x-wt')
+  })
+
+  it('shows no branch for a review of the current changes', async () => {
+    await renderApp(fixtureSession())
+
+    expect(screen.getByRole('banner')).not.toHaveTextContent('→')
+  })
+
+  it('locks the file pane of a read-only review but still takes decisions', async () => {
+    const user = userEvent.setup()
+    await renderApp(
+      fixtureSession({
+        scope: { branch: 'feat/x', base: 'main', worktree: null },
+        readOnly: true,
+      }),
+    )
+
+    expect(
+      screen.getByText("Read-only: this branch isn't checked out"),
+    ).toBeTruthy()
+    const editor = await screen.findByTestId('cm-editable')
+    await waitFor(() => {
+      expect(editor.querySelector('.cm-content')).toHaveAttribute(
+        'contenteditable',
+        'false',
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: /^Approve/ }))
+    expect(api.setHunkStatus).toHaveBeenCalledWith('a.ts@@1', 'approved')
   })
 })

@@ -139,6 +139,7 @@ const App = () => {
     <Shell>
       <TopBar
         hunks={flatHunks}
+        scope={session.scope}
         reviewComplete={session.reviewComplete}
         onSubmit={requestSubmit}
         conversation={
@@ -182,6 +183,7 @@ const App = () => {
               hasOpenQuestions={openQuestionHunkIds(questions).has(
                 currentEntry.hunk.id,
               )}
+              readOnly={session.readOnly}
             />
           ) : (
             <EmptyState>

@@ -1,6 +1,10 @@
 // Engine
 import type { DiffScope } from '../engine/git.js'
 
+// Install
+import { INSTALL_CLIENTS } from '../install/index.js'
+import type { InstallClient } from '../install/index.js'
+
 export type Subcommand = 'review' | 'mcp' | 'install'
 
 export interface CliArgs {
@@ -9,6 +13,8 @@ export interface CliArgs {
   scope: DiffScope
   json: boolean
   help: boolean
+  // `install --client`; null installs for every client.
+  client: InstallClient | null
 }
 
 export class CliArgError extends Error {}
@@ -16,17 +22,21 @@ export class CliArgError extends Error {}
 const SUBCOMMANDS: Subcommand[] = ['review', 'mcp', 'install']
 
 export const USAGE = `Usage: diffmate [review] [dir] [--staged | --base <ref>] [--json]
+       diffmate install [dir] [--client claude|cursor]
 
 Review the current repo's changes in a local browser UI.
 
 Arguments:
   review               Review the current repo (default)
+  install              Set up diffmate's MCP server and diffmate-review skill
+                       in a project, for Claude Code and Cursor
   dir                  Repo directory to review (default: current directory)
 
 Options:
   --staged             Review staged changes only
   --base <ref>         Review changes since <ref> (merge-base semantics)
   --json               Print the report as JSON instead of markdown
+  --client <name>      install only: claude or cursor (default: both)
   -h, --help           Show this help
 `
 
@@ -39,6 +49,7 @@ export function parseArgs(argv: string[]): CliArgs {
     scope: {},
     json: false,
     help: false,
+    client: null,
   }
   const positionals: string[] = []
 
@@ -76,6 +87,20 @@ export function parseArgs(argv: string[]): CliArgs {
       }
       if (!ref) throw new CliArgError('Missing value for --base')
       args.scope.base = ref
+      continue
+    }
+    if (arg === '--client' || arg.startsWith('--client=')) {
+      const value =
+        arg === '--client' ? argv[++i] : arg.slice('--client='.length)
+      if (!value || value.startsWith('-')) {
+        throw new CliArgError('Missing value for --client')
+      }
+      if (!INSTALL_CLIENTS.includes(value as InstallClient)) {
+        throw new CliArgError(
+          `Unknown --client: ${value} (expected ${INSTALL_CLIENTS.join(' or ')})`,
+        )
+      }
+      args.client = value as InstallClient
       continue
     }
     if (arg === '--') {
