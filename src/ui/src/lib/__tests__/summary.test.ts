@@ -19,7 +19,6 @@ function hunk(status: Hunk['status']): Hunk {
     summary: null,
     comment: null,
     editedContent: null,
-    questions: [],
   }
 }
 

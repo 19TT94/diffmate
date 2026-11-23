@@ -16,9 +16,11 @@ export type HunkStatus = 'pending' | 'approved' | 'rejected'
 // How the diff panel shows a hunk: old/new columns, or one inline diff.
 export type DiffLayout = 'side-by-side' | 'inline'
 
+// One entry in the review's conversation; a null hunkId asks about the
+// whole review rather than one hunk.
 export interface Question {
   id: string
-  hunkId: string
+  hunkId: string | null
   text: string
   askedAt: number
   answer: string | null
@@ -40,7 +42,6 @@ export interface Hunk {
   summary: string | null
   comment: string | null
   editedContent: string | null
-  questions: Question[]
 }
 
 export type FileStatus =
@@ -73,7 +74,11 @@ export interface ReviewSessionSummary {
   // change is and why. Both null for CLI sessions.
   title: string | null
   summary: string | null
+  // In the order asked.
+  questions: Question[]
   reviewComplete: boolean
+  // The agent called end_review; open questions won't be answered.
+  reviewEnded: boolean
 }
 
 // Mirrors engine/settings.ts: user preferences saved outside the repo and
@@ -89,10 +94,12 @@ export interface SettingsColors {
 export interface Settings {
   colors?: SettingsColors
   fileListWidth?: number
+  conversationWidth?: number
 }
 
 // null removes a field, as with PATCH /api/settings.
 export interface SettingsPatch {
   colors?: { [K in keyof SettingsColors]?: SettingsColors[K] | null } | null
   fileListWidth?: number | null
+  conversationWidth?: number | null
 }

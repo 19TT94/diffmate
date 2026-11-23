@@ -42,7 +42,6 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     summary: null,
     comment: null,
     editedContent: null,
-    questions: [],
     ...overrides,
   }
 }

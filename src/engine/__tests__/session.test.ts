@@ -304,3 +304,17 @@ test('summaries that match no hunk do not move a file', () => {
     ['hook.js', 'page.js', 'test.js', 'utils.js'],
   )
 })
+
+test('end marks the review ended and emits review_ended', () => {
+  const session = new ReviewSession('mcp', {}, fixtureFiles())
+  const events: unknown[] = []
+  session.bus.on('review_ended', (event) => events.push(event))
+
+  assert.equal(session.reviewEnded, false)
+  session.end('Applying your feedback')
+
+  assert.equal(session.reviewEnded, true)
+  assert.deepEqual(events, [
+    { sessionId: session.id, reason: 'Applying your feedback' },
+  ])
+})

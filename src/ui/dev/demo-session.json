@@ -6,6 +6,8 @@
     "title": "Add Button size variants + compact toolbar action",
     "summary": "Claude's change: adds an optional sm/md size to Button and uses the compact token everywhere in the review toolbar so actions fit without wrapping. Added 3 hunks across the UI package.",
     "reviewComplete": false,
+    "reviewEnded": false,
+    "questions": [],
     "files": [
       {
         "path": "src/ui/src/components/ui/Button.tsx",
@@ -25,7 +27,6 @@
             "summary": "Button only had a variant prop. Adding an optional size (sm/md, default md) so compact toolbar actions can share the same component without a one-off styled override.",
             "comment": null,
             "editedContent": null,
-            "questions": [],
             "lines": [
               {
                 "type": "context",
@@ -118,7 +119,6 @@
             "summary": "Wiring size through to StyledButton and adding a hover brightness filter so primary/secondary/ghost all share the same interaction cue instead of per-variant hover colors.",
             "comment": null,
             "editedContent": null,
-            "questions": [],
             "lines": [
               {
                 "type": "del",
@@ -268,7 +268,6 @@
             "summary": "New helper to truncate deep paths in the file list (first/…/last) so long repo-relative paths stay readable in the narrow sidebar without wrapping.",
             "comment": null,
             "editedContent": null,
-            "questions": [],
             "lines": [
               {
                 "type": "add",

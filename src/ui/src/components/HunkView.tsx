@@ -2,10 +2,12 @@ import styled from 'styled-components'
 
 // Components
 import { Button } from './ui/Button'
-import { Panel, PanelText } from './ui/Panel'
+import { Panel, PanelProse } from './ui/Panel'
 import { ViewModeToggle } from './ui/ViewModeToggle'
 import { FileEditor } from './FileEditor'
 import { HunkDiff } from './HunkDiff'
+import { Markdown } from './Markdown'
+import { QuestionMarker } from './QuestionMarker'
 
 // Utils
 import { splitPath } from '../lib/summary'
@@ -30,6 +32,8 @@ interface HunkViewProps {
   onNext: (() => void) | null
   // Zero-based position of this hunk within its file.
   position: { index: number; total: number }
+  // An unanswered question is about this hunk.
+  hasOpenQuestions: boolean
 }
 
 // A borderless toolbar over the hunk's summary, then two separate bordered
@@ -49,6 +53,7 @@ export function HunkView({
   onPrev,
   onNext,
   position,
+  hasOpenQuestions,
 }: HunkViewProps) {
   const newSide = fileContentLoading ? (
     <Placeholder>Loading file…</Placeholder>
@@ -69,6 +74,7 @@ export function HunkView({
     <Container id={`hunk-${hunk.id}`} $focused={isFocused} onClick={onFocus}>
       <Toolbar role="toolbar" aria-label="Hunk actions">
         <FileName title={filePath}>{splitPath(filePath).name}</FileName>
+        {hasOpenQuestions && <QuestionMarker />}
         <Button
           size="sm"
           variant="ghost"
@@ -132,7 +138,9 @@ export function HunkView({
           name="explanation"
           title="Explanation"
         >
-          <PanelText>{hunk.summary}</PanelText>
+          <PanelProse>
+            <Markdown>{hunk.summary}</Markdown>
+          </PanelProse>
         </Panel>
       )}
 

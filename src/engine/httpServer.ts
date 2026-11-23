@@ -259,6 +259,7 @@ function summarizeSession(session: ReviewSession) {
     summary: session.summary,
     questions: session.questions,
     reviewComplete: session.reviewComplete,
+    reviewEnded: session.reviewEnded,
   }
 }
 

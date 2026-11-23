@@ -18,6 +18,7 @@ interface HunkStepperProps {
   onFileChange?: (content: string) => void
   layout: DiffLayout
   onLayoutChange: (layout: DiffLayout) => void
+  hasOpenQuestions: boolean
 }
 
 export function HunkStepper({
@@ -29,6 +30,7 @@ export function HunkStepper({
   onFileChange,
   layout,
   onLayoutChange,
+  hasOpenQuestions,
 }: HunkStepperProps) {
   const {
     content: fileContent,
@@ -55,6 +57,7 @@ export function HunkStepper({
         onLayoutChange={onLayoutChange}
         onPrev={onPrev}
         onNext={onNext}
+        hasOpenQuestions={hasOpenQuestions}
         position={{
           index: file.hunks.findIndex((entry) => entry.id === hunk.id),
           total: file.hunks.length,

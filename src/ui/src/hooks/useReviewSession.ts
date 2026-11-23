@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 // Utils
 import {
+  askQuestion as apiAskQuestion,
   connectEvents,
   fetchSession,
   setHunkComment as apiSetHunkComment,
@@ -33,6 +34,8 @@ export function flattenHunks(session: ReviewSessionSummary | null): FlatHunk[] {
 export function useReviewSession() {
   const [session, setSession] = useState<ReviewSessionSummary | null>(null)
   const [focusedHunkId, setFocusedHunkId] = useState<string | null>(null)
+  // Questions sent but not yet in `session`; they're open questions too.
+  const [sendingQuestions, setSendingQuestions] = useState(0)
 
   const refresh = useCallback(async () => {
     const next = await fetchSession()
@@ -81,8 +84,25 @@ export function useReviewSession() {
     [refresh],
   )
 
+  const askQuestion = useCallback(
+    async (hunkId: string | null, text: string) => {
+      setSendingQuestions((count) => count + 1)
+      try {
+        await apiAskQuestion(hunkId, text)
+        await refresh()
+      } finally {
+        setSendingQuestions((count) => count - 1)
+      }
+    },
+    [refresh],
+  )
+
+  // The review goes back to the agent's chat, so the tab has nothing left
+  // to do. Browsers may refuse to close a tab they didn't open by script;
+  // the submitted screen covers that case.
   const submitReview = useCallback(async () => {
     await apiSubmitReview()
+    window.close()
     await refresh()
   }, [refresh])
 
@@ -93,6 +113,8 @@ export function useReviewSession() {
     setHunkStatus,
     setHunkComment,
     setHunkEditedContent,
+    askQuestion,
+    sendingQuestions,
     submitReview,
   }
 }

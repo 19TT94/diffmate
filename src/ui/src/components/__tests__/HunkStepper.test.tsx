@@ -32,7 +32,6 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     summary: null,
     comment: null,
     editedContent: null,
-    questions: [],
     ...overrides,
   }
 }
@@ -70,6 +69,7 @@ describe('HunkStepper', () => {
         onSetStatus={() => {}}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 
@@ -86,6 +86,7 @@ describe('HunkStepper', () => {
         onSetStatus={() => {}}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 
@@ -110,6 +111,7 @@ describe('HunkStepper', () => {
         onSetStatus={() => {}}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 
@@ -130,6 +132,7 @@ describe('HunkStepper', () => {
         onSetStatus={onSetStatus}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 
@@ -151,6 +154,7 @@ describe('HunkStepper', () => {
         onSetStatus={() => {}}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 
@@ -171,6 +175,7 @@ describe('HunkStepper', () => {
         onSetStatus={() => {}}
         layout="side-by-side"
         onLayoutChange={() => {}}
+        hasOpenQuestions={false}
       />,
     )
 

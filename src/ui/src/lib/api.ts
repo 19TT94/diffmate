@@ -70,6 +70,19 @@ export function fetchFileContent(path: string): Promise<{ content: string }> {
   return apiFetch(`/api/files/content?path=${encodeURIComponent(path)}`)
 }
 
+// A null hunkId asks about the whole review. Returns once the question is
+// queued for the agent, not when it's answered (that arrives over SSE).
+export async function askQuestion(
+  hunkId: string | null,
+  text: string,
+): Promise<void> {
+  await apiFetch('/api/questions', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(hunkId === null ? { text } : { hunkId, text }),
+  })
+}
+
 export function fetchSettings(): Promise<Settings> {
   return apiFetch('/api/settings')
 }
@@ -91,6 +104,7 @@ const SSE_EVENTS = [
   'question_asked',
   'question_answered',
   'review_complete',
+  'review_ended',
 ] as const
 
 export function connectEvents(onEvent: () => void): EventSource {

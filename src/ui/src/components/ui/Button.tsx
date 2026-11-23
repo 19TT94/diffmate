@@ -80,6 +80,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: ButtonVariant
   size?: ButtonSize
   active?: boolean
+  // React 19 passes ref as a plain prop.
+  ref?: React.Ref<HTMLButtonElement>
 }
 
 export function Button({

@@ -24,7 +24,6 @@ function fixtureHunk(overrides: Partial<Hunk> = {}): Hunk {
     summary: null,
     comment: null,
     editedContent: null,
-    questions: [],
     ...overrides,
   }
 }
@@ -311,5 +310,30 @@ describe('FileList', () => {
       expect(setItem).not.toHaveBeenCalled()
       vi.stubGlobal('localStorage', realStorage)
     })
+  })
+
+  it('marks the row of a file with an unanswered question', () => {
+    renderWithTheme(
+      <FileList
+        files={[fixtureFile({ path: 'a.txt' }), fixtureFile({ path: 'b.txt' })]}
+        currentPath={null}
+        onSelectFile={() => {}}
+        onBulkSetStatus={() => {}}
+        onWidthChange={() => {}}
+        openQuestionPaths={new Set(['b.txt'])}
+      />,
+    )
+
+    const rows = document.querySelectorAll(
+      'nav [title="a.txt"], nav [title="b.txt"]',
+    )
+    const rowOf = (path: string) =>
+      Array.from(rows).find((el) => el.getAttribute('title') === path)!
+        .parentElement!
+    const marker = 'Waiting on an answer from the agent'
+    expect(rowOf('a.txt').querySelector(`[title="${marker}"]`)).toBeNull()
+    expect(
+      rowOf('b.txt').querySelector(`[title="${marker}"]`),
+    ).toHaveTextContent('?')
   })
 })
