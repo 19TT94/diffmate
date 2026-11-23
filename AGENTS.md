@@ -14,8 +14,9 @@ output builder), the React review UI, and the phase-1 one-shot CLI
 (`diffmate` / `diffmate review`, `npm run build` -> `dist/`) are built
 and tested. The MCP stdio server (`diffmate mcp`) exposes all four tools
 (`start_review` / `wait_for_activity` / `answer_question` / `end_review`),
-verified against a live Claude Code session; the Q&A UI (M9) and
-`diffmate install` (M10) are still to come. See
+verified against a live Claude Code session, and the Q&A UI (M9) is
+built. `diffmate install` (M10) sets up a project's MCP config and
+`diffmate-review` skill for Claude Code and Cursor. See
 [`docs/PLAN.md`](docs/PLAN.md) for the full architecture, package
 layout, and build order.
 
@@ -47,7 +48,7 @@ Per `docs/PLAN.md`:
 | `src/engine/`  | Harness-agnostic core: git access, diff parsing, session state, HTTP server, output builder                                                |
 | `src/cli/`     | Phase 1 entry point — one-shot blocking CLI, works from any harness                                                                        |
 | `src/mcp/`     | Phase 2 entry point — Claude Code MCP server (stdio), live Q&A                                                                             |
-| `src/install/` | `diffmate install` — writes `.mcp.json` + project-local slash command                                                                      |
+| `src/install/` | `diffmate install` — writes the MCP config + project-local `diffmate-review` skill (Claude Code, Cursor)                                   |
 | `src/ui/`      | React + TypeScript + styled-components (Vite). Its own package.json, tsconfig, and dependency policy — see `.cursor/rules/diffmate-ui.mdc` |
 
 ## Conventions
@@ -80,8 +81,8 @@ Per `docs/PLAN.md`:
   are signals only, consumed by whichever agent reads the structured output.
   Never let UI copy or a tool description imply an auto-revert. The only
   file a review writes is diffmate's own settings file outside the repo
-  (`~/.config/diffmate/settings.json`); `diffmate install` writing
-  `.mcp.json` and the slash command is a separate, explicit command.
+  (`~/.config/diffmate/settings.json`); `diffmate install` writing the
+  MCP config and the skill is a separate, explicit command.
 - Only commit when explicitly asked.
 
 ## Skills

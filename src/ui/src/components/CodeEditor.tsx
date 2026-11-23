@@ -42,6 +42,8 @@ interface CodeEditorProps {
   content?: string
   hunkSpan?: ReviewSpan | null
   onDocChanged?: (content: string) => void
+  // Editable mode only: show the review span but refuse edits.
+  locked?: boolean
 }
 
 // Shared base for both panes: dark theme, per-path language, compatible
@@ -56,6 +58,7 @@ export function CodeEditor({
   content,
   hunkSpan,
   onDocChanged,
+  locked = false,
 }: CodeEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -98,7 +101,13 @@ export function CodeEditor({
             EditorView.editable.of(false),
             EditorView.contentAttributes.of({ 'aria-readonly': 'true' }),
           ]
-        : []),
+        : locked
+          ? [
+              EditorState.readOnly.of(true),
+              EditorView.editable.of(false),
+              EditorView.contentAttributes.of({ 'aria-readonly': 'true' }),
+            ]
+          : []),
       lineNumbers(),
     ]
     if (readOnly) {
@@ -141,7 +150,7 @@ export function CodeEditor({
     // The document is owned by the parent and changes remount this
     // component via its key, so a mount-only build is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filePath, mode, readOnly])
+  }, [filePath, mode, readOnly, locked])
 
   useEffect(() => {
     viewRef.current?.dispatch({

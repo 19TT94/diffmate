@@ -48,11 +48,12 @@ export interface SessionAgentContext {
 
 // Addresses a hunk the way an agent sees its own diff: by file path and the
 // hunk's 1-based position within that file, in `git diff` order (a new
-// untracked file is one hunk).
+// untracked file is one hunk). Without a summary, an entry only places its
+// file in the walkthrough order.
 export interface HunkSummaryInput {
   path: string
   hunk: number
-  summary: string
+  summary?: string
 }
 
 export class ReviewSession {
@@ -108,7 +109,7 @@ export class ReviewSession {
       )
       const hunk = file?.hunks[input.hunk - 1]
       if (file && hunk) {
-        hunk.summary = input.summary
+        if (input.summary !== undefined) hunk.summary = input.summary
         walkthrough.add(file)
       } else {
         this.unmatchedSummaries.push(input)

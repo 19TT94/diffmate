@@ -34,6 +34,8 @@ interface HunkViewProps {
   position: { index: number; total: number }
   // An unanswered question is about this hunk.
   hasOpenQuestions: boolean
+  // The file pane can't be edited (a branch that isn't checked out).
+  readOnly?: boolean
 }
 
 // A borderless toolbar over the hunk's summary, then two separate bordered
@@ -54,6 +56,7 @@ export function HunkView({
   onNext,
   position,
   hasOpenQuestions,
+  readOnly = false,
 }: HunkViewProps) {
   const newSide = fileContentLoading ? (
     <Placeholder>Loading file…</Placeholder>
@@ -67,6 +70,7 @@ export function HunkView({
       filePath={filePath}
       hunk={hunk}
       onDocChanged={onFileChange}
+      readOnly={readOnly}
     />
   )
 
@@ -155,7 +159,23 @@ export function HunkView({
         <HunkDiff hunk={hunk} filePath={filePath} layout={layout} />
       </DiffPanel>
 
-      <EditorPanel title="File" name="file" expandable expandedTitle={filePath}>
+      <EditorPanel
+        title={
+          readOnly ? (
+            <>
+              File{' '}
+              <ReadOnlyNote>
+                Read-only: this branch isn&apos;t checked out
+              </ReadOnlyNote>
+            </>
+          ) : (
+            'File'
+          )
+        }
+        name="file"
+        expandable
+        expandedTitle={filePath}
+      >
         {newSide}
       </EditorPanel>
     </Container>
@@ -217,6 +237,12 @@ const Decision = styled.span<{ $status: 'approved' | 'rejected' }>`
 const DiffPanel = styled(Panel)`
   flex: 0 1 auto;
   max-height: 45%;
+`
+
+const ReadOnlyNote = styled.span`
+  margin-left: ${({ theme }) => theme.spacing[2]};
+  font-weight: ${({ theme }) => theme.fontWeights.normal};
+  color: ${({ theme }) => theme.colors.muted};
 `
 
 const EditorPanel = styled(Panel)`

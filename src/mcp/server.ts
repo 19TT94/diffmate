@@ -33,8 +33,9 @@ const TOOLS = [
   {
     name: 'start_review',
     description:
-      'Start a diffmate review of the current repo and open it in the browser ' +
-      'for the user to approve or reject each hunk. Returns the session id and ' +
+      'Start a diffmate review of the current repo (or of a branch, with ' +
+      'branch) and open it in the browser for the user to approve or reject ' +
+      'each hunk. Returns the session id and ' +
       'review URL immediately — share the url with the user, since the ' +
       'browser may not have opened — then call wait_for_activity in a loop. ' +
       'Only one review can be active at a time.',
@@ -48,6 +49,16 @@ const TOOLS = [
         staged: {
           type: 'boolean',
           description: 'Review only staged changes.',
+        },
+        branch: {
+          type: 'string',
+          description:
+            "Review this local branch against base (default: the repo's " +
+            'default branch) instead of the current changes. If the branch ' +
+            'is checked out in a worktree, that worktree is reviewed, ' +
+            'uncommitted changes included; otherwise its committed changes ' +
+            'are reviewed read-only. Nothing is checked out or fetched: ' +
+            'fetch a PR as a local branch first. Not with staged.',
         },
         title: {
           type: 'string',
@@ -69,8 +80,11 @@ const TOOLS = [
             'depends on comes first: files are shown in the order they first ' +
             "appear here (any you leave out come last), and a file's hunks " +
             'stay in diff order. Say in each summary how the change connects ' +
-            'to the changes that follow. Entries that match no hunk come ' +
-            'back as unmatchedSummaries.',
+            'to the changes that follow. summary is optional: leave it out ' +
+            'to place a file in the order without an explanation, e.g. when ' +
+            "reviewing code you didn't write, explain only what is worth " +
+            'pointing out. Entries that match no hunk come back as ' +
+            'unmatchedSummaries.',
           items: {
             type: 'object',
             properties: {
@@ -78,7 +92,7 @@ const TOOLS = [
               hunk: { type: 'integer', minimum: 1 },
               summary: { type: 'string' },
             },
-            required: ['path', 'hunk', 'summary'],
+            required: ['path', 'hunk'],
           },
         },
       },
@@ -208,6 +222,7 @@ function parseStartReviewArgs(input: Record<string, unknown>): StartReviewArgs {
   const args: StartReviewArgs = {}
   if (typeof input.base === 'string') args.base = input.base
   if (typeof input.staged === 'boolean') args.staged = input.staged
+  if (typeof input.branch === 'string') args.branch = input.branch
   if (typeof input.title === 'string') args.title = input.title
   if (typeof input.summary === 'string') args.summary = input.summary
   if (Array.isArray(input.hunkSummaries)) {

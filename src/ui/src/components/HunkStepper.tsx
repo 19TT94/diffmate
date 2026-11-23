@@ -19,6 +19,7 @@ interface HunkStepperProps {
   layout: DiffLayout
   onLayoutChange: (layout: DiffLayout) => void
   hasOpenQuestions: boolean
+  readOnly?: boolean
 }
 
 export function HunkStepper({
@@ -31,6 +32,7 @@ export function HunkStepper({
   layout,
   onLayoutChange,
   hasOpenQuestions,
+  readOnly = false,
 }: HunkStepperProps) {
   const {
     content: fileContent,
@@ -58,6 +60,7 @@ export function HunkStepper({
         onPrev={onPrev}
         onNext={onNext}
         hasOpenQuestions={hasOpenQuestions}
+        readOnly={readOnly}
         position={{
           index: file.hunks.findIndex((entry) => entry.id === hunk.id),
           total: file.hunks.length,

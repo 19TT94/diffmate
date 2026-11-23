@@ -27,6 +27,7 @@ export interface McpDeps {
 export interface StartReviewArgs {
   base?: string
   staged?: boolean
+  branch?: string
   title?: string
   summary?: string
   // As the agent sent them; malformed entries are reported back, not applied.
@@ -153,11 +154,10 @@ export class SessionController {
     args: StartReviewArgs,
     deps: McpDeps,
   ): Promise<StartReviewResult> {
-    const scope: DiffScope = args.staged
-      ? { staged: true }
-      : args.base
-        ? { base: args.base }
-        : {}
+    const scope: DiffScope = {}
+    if (args.staged) scope.staged = true
+    if (args.base) scope.base = args.base
+    if (args.branch) scope.branch = args.branch
     const raw = await resolveDiff(scope)
 
     const files = parseDiff(raw.diffText)
@@ -182,7 +182,7 @@ export class SessionController {
       summary: args.summary ?? null,
       hunkSummaries: hunkSummaries.filter(isHunkSummary),
     }
-    const session = new ReviewSession('mcp', scope, files, agent)
+    const session = new ReviewSession('mcp', raw.scope, files, agent)
     const server = await startReviewServer(session, deps.uiDir, raw.repoRoot)
     const queue = (question: Question): void => {
       review.undelivered.push(question)
@@ -299,7 +299,7 @@ export function isHunkSummary(value: unknown): value is HunkSummaryInput {
     typeof entry.path === 'string' &&
     Number.isInteger(entry.hunk) &&
     (entry.hunk as number) >= 1 &&
-    typeof entry.summary === 'string'
+    (entry.summary === undefined || typeof entry.summary === 'string')
   )
 }
 

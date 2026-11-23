@@ -63,6 +63,10 @@ export type SessionMode = 'cli' | 'mcp'
 export interface DiffScope {
   staged?: boolean
   base?: string
+  // A branch review: the branch, and the worktree it's checked out in (null
+  // when it isn't).
+  branch?: string
+  worktree?: string | null
 }
 
 export interface ReviewSessionSummary {
@@ -79,6 +83,8 @@ export interface ReviewSessionSummary {
   reviewComplete: boolean
   // The agent called end_review; open questions won't be answered.
   reviewEnded: boolean
+  // A branch that isn't checked out: no files to edit against.
+  readOnly: boolean
 }
 
 // Mirrors engine/settings.ts: user preferences saved outside the repo and

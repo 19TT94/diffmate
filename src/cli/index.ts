@@ -17,6 +17,9 @@ import { CliArgError, parseArgs, USAGE } from './args.js'
 // MCP
 import { runMcpServer } from '../mcp/server.js'
 
+// Install
+import { install } from '../install/index.js'
+
 // Types
 import type { CliArgs } from './args.js'
 
@@ -74,7 +77,7 @@ export async function runReview(
     return 1
   }
 
-  const session = new ReviewSession('cli', args.scope, files)
+  const session = new ReviewSession('cli', raw.scope, files)
   const server = await startReviewServer(session, uiDir, raw.repoRoot)
 
   deps.stdout(`Reviewing: ${raw.repoRoot}\n`)
@@ -99,6 +102,18 @@ async function run(argv: string[]): Promise<number> {
       return 2
     }
     throw error
+  }
+
+  if (args.subcommand === 'install' && !args.help) {
+    try {
+      await install(args.dir, args.client, (text) => process.stdout.write(text))
+      return 0
+    } catch (error) {
+      process.stderr.write(
+        `diffmate: ${error instanceof Error ? error.message : String(error)}\n`,
+      )
+      return 1
+    }
   }
 
   if (args.subcommand === 'mcp') {

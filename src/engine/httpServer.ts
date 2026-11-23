@@ -187,6 +187,18 @@ async function handleRequest(
     }
 
     const editMatch = pathname.match(HUNK_EDIT_RE)
+    const fileNotesMatch = pathname.match(FILE_NOTES_RE)
+    if (
+      method === 'POST' &&
+      (editMatch || fileNotesMatch) &&
+      isReadOnly(session)
+    ) {
+      sendJson(res, 409, {
+        error: "Read-only review: this branch isn't checked out",
+      })
+      return
+    }
+
     if (method === 'POST' && editMatch) {
       const hunkId = decodeURIComponent(editMatch[1]!)
       const body = (await readJsonBody(req)) as {
@@ -197,7 +209,6 @@ async function handleRequest(
       return
     }
 
-    const fileNotesMatch = pathname.match(FILE_NOTES_RE)
     if (method === 'POST' && fileNotesMatch) {
       const path = decodeURIComponent(fileNotesMatch[1]!)
       const body = (await readJsonBody(req)) as { notes?: string | null }
@@ -249,6 +260,11 @@ async function handleRequest(
   }
 }
 
+// A branch review with no worktree has no files to edit against.
+function isReadOnly(session: ReviewSession): boolean {
+  return session.scope.branch !== undefined && !session.scope.worktree
+}
+
 function summarizeSession(session: ReviewSession) {
   return {
     id: session.id,
@@ -260,6 +276,7 @@ function summarizeSession(session: ReviewSession) {
     questions: session.questions,
     reviewComplete: session.reviewComplete,
     reviewEnded: session.reviewEnded,
+    readOnly: isReadOnly(session),
   }
 }
 

@@ -288,6 +288,18 @@ test('files follow the order they first appear in hunk summaries', () => {
   )
 })
 
+test('a summary-less entry orders its file without an Explanation', () => {
+  const session = new ReviewSession('mcp', {}, threeFiles(), {
+    title: null,
+    summary: null,
+    hunkSummaries: [{ path: 'utils.js', hunk: 1 }],
+  })
+
+  assert.equal(session.files[0]!.path, 'utils.js')
+  assert.equal(session.files[0]!.hunks[0]!.summary, null)
+  assert.deepEqual(session.unmatchedSummaries, [])
+})
+
 test('summaries that match no hunk do not move a file', () => {
   const session = new ReviewSession('mcp', {}, threeFiles(), {
     title: null,
